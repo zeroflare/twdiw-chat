@@ -1,0 +1,510 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "數位發展部-數位憑證皮夾-發行端服務API",
+    "description": "<h3>🔑 使用前須知</h3>  <hr/>  <ol>    <li><strong>點選右方 Authorize 按鈕</strong></li>    <li>  <strong>查看申請時收到的電子郵件</strong><br/>  <em>（主旨：【數位憑證皮夾】發行端沙盒系統_帳號啟用通知）</em></li>    <li>  <strong>將信件中的發行端沙盒系統 AccessToken 填入 Value 欄位</strong></li>    <li><strong>開始測試 API</strong></li>  </ol>  <p><strong>⚠️ 注意事項：</strong>發行端、驗證端有各自不同的 AccessToken 資訊，請確認使用正確的 Token。</p>  <hr/>  <h3>📋 操作指引</h3>  <ol>    <li>      <strong>查看物件詳細結構</strong><br/>        <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #f5a623;'>    <em>📌 提示：</em><br>    點擊請求或回應區塊中的 <strong>Schema</strong> 標籤，可以查看完整的物件定義與結構。    <br>          </div>    </li>  </ol>  <hr/>  <h3>📋 發行端系統流程圖</h3>  <p>&nbsp;&nbsp;&nbsp;&nbsp;<strong>📑 詳細流程圖或說明</strong>：<a href='https://drive.google.com/file/d/1YeSXInNE-q66ukkepMRCR8IAnPezeORB/view?usp=sharing' target='_blank'>  <strong>點此查看</strong></a></p><br>發行端產生卡片申請QR Code無個資版本,目前不提供在沙盒內測試<br> <br> <hr/>  <h3>🔒 安全性規範</h3>  <div style='margin-left: 10px; padding: 10px; border-left: 3px solid #2ecc71; background-color: #f9fdfb;'>    <strong style='color: #27ae60;'>📋 API 安全性原則</strong>    <ul style='list-style-type: none; padding-left: 0; margin-top: 10px;'>      <li>✦ 所有 API 呼叫必須使用 HTTPS (TLS 1.3 以上) 進行加密傳輸</li>      <li>✦ Access Token 有效期限為 365 天(暫定)，請定期更新</li>      <li>✦ 每個 IP 位址的呼叫次數限制為每小時 3600 次</li>      <li>✦ 系統會自動偵測異常的 API 呼叫模式並進行阻擋</li>    </ul>    <strong style='color: #27ae60; margin-top: 15px; display: block;'>🛡️ 資料保護措施</strong>    <ul style='list-style-type: none; padding-left: 0; margin-top: 10px;'>      <li>✦ 此為測試階段，請勿上傳具個資之資料</li>      <li>✦ 交易序號（transactionId）採用 UUID v4 確保唯一性</li>      <li>✦ QR Code 具有時效性，超過 5 分鐘後自動失效</li>    </ul>    <strong style='color: #27ae60; margin-top: 15px; display: block;'>⚠️ 安全性建議</strong>    <ul style='list-style-type: none; padding-left: 0; margin-top: 10px;'>      <li>✦ 請勿在公開場合或程式碼中暴露 Access Token</li>      <li>✦ 建議實作 Access Token 輪換機制</li>      <li>✦ 保存交易紀錄時，建議加密儲存敏感資訊</li>      <li>✦ 定期清理過期的交易資料</li>    </ul>    <strong style='color: #27ae60; margin-top: 15px; display: block;'>🔍 異常處理機制</strong>    <ul style='list-style-type: none; padding-left: 0; margin-top: 10px;'>      <li>✦ 連續呼叫失敗超過 5 次，帳號將被暫時鎖定 15 分鐘</li>      <li>✦ 系統偵測到異常存取模式時，將自動通知管理員</li>      <li>✦ 每個 API 呼叫都會記錄詳細的存取日誌</li>      <li>✦ 系統定期進行安全性掃描與弱點檢測</li>    </ul>  </div>  <hr/>",
+    "termsOfService": "",
+    "contact": {
+      "name": "",
+      "url": "",
+      "email": ""
+    },
+    "license": {
+      "name": "",
+      "url": ""
+    },
+    "version": "0.0.1"
+  },
+  "servers": [
+    {
+      "url": "https://issuer-sandbox.wallet.gov.tw/",
+      "description": ""
+    }
+  ],
+  "tags": [
+    {
+      "name": "發行端流程",
+      "description": ""
+    }
+  ],
+  "paths": {
+    "/api/qrcode/data": {
+      "post": {
+        "tags": [
+          "發行端流程"
+        ],
+        "summary": "發行端模組產生QR Code 有個資版本",
+        "description": "<strong>功能說明</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 使用流程：</em><br><ol style='padding-left: 15px; margin-top: 5px;'><li>請先在沙盒系統中透過<strong>建立 VC 模板</strong>功能，建立一張 VC 範本</li><li>依照 Schema 中的描述，填入本 API 所需的請求參數值</li><li>呼叫此 API 後，將取得以下重要回應：<ul style='padding-left: 15px; margin-top: 3px;'><li><strong style='color: #e67e22;'>transactionId</strong>：<em>此為後續查詢 QR Code 是否被掃描的重要依據，開發者必須特別關注並保存此值</em></li><li><strong>qrCode</strong>：可顯示在網頁上的 QR Code 圖片</li><li><strong>deepLink</strong>：可觸發數位憑證皮夾 APP 開啟的專用連結</li></ul></li></ol><em>⚠️ 注意事項：</em><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 驗證碼模式（txCode）目前不支援</li></ul></div>",
+        "operationId": "setVCItemData",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DwissuerVCItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DwissuerVCItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "請求錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DWVC101ErrorMsg"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/schemas/ErrorResponses/500"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/qrcode/nodata": {
+      "post": {
+        "tags": [
+          "發行端流程"
+        ],
+        "summary": "發行端模組產生QR Code 無個資版本",
+        "description": "<strong>功能說明</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 使用流程：</em><br><ol style='padding-left: 15px; margin-top: 5px;'><li>請先至發行端模組透過<strong>建立 VC 模板</strong>功能，建立一張 VC 範本</li><li>依照 Schema 中的描述，填入本 API 所需的請求參數值</li><li>呼叫此 API 後，將取得以下重要回應：<ul style='padding-left: 15px; margin-top: 3px;'><li><strong style='color: #e67e22;'>transactionId</strong>：<em>此為後續查詢 QR Code 是否被掃描的重要依據，開發者必須特別關注並保存此值</em></li><li><strong>qrCode</strong>：可顯示在網頁上的 QR Code 圖片</li><li><strong>deepLink</strong>：可觸發數位憑證皮夾 APP 開啟的專用連結</li></ul></li></ol></div>",
+        "operationId": "setVCItemData",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DwissuerVCRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DwissuerVCItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "請求錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DWVC101ErrorMsg"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/schemas/ErrorResponses/500"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/credential/nonce/{transactionId}": {
+      "get": {
+        "tags": [
+          "發行端流程"
+        ],
+        "summary": "發行端VC卡片單一資料查詢",
+        "description": "<strong>功能說明</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 使用流程：</em><br><ol style='padding-left: 15px; margin-top: 5px;'><li>此 API 用於查詢已建立的 VC 卡片詳細資訊</li><li>呼叫時需提供 <strong>transactionId</strong> 參數，此值可從建立 VC 時回傳的 transactionId 欄位中取得</li><li>回傳資料包含完整的憑證資訊，可用於檢視憑證狀態和內容</li></ol></div>",
+        "operationId": "getVCItemDataByNonce",
+        "parameters": [
+          {
+            "name": "transactionId",
+            "in": "path",
+            "description": "<div style='background-color: #fff3e0; padding: 10px; border-radius: 5px; border-left: 4px solid #e67e22;'><strong>重要提醒</strong><br><p style='margin: 5px 0;'>此參數值為 <code>/api/qrcode/data</code> API 回傳的 <code>transactionId</code>，<span style='color: #e67e22;'>必須先執行 <code>/api/qrcode/data</code> API 才能取得此值</span>。</p><p style='margin: 5px 0; font-size: 0.9em; color: #666;'>請依照以下步驟操作：</p><ol style='margin: 5px 0; padding-left: 20px;'><li>先呼叫 <code>/api/qrcode/data</code> API</li><li>從回應中取得 <code>transactionId</code> 的值</li></ol></div>",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "be08beaa-d5f8-4a27-ac44-7ac7cad8b9eb"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "<strong>成功</strong><div style='background-color: #fff; padding: 15px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>\uD83D\uDD0D JWT Token 結構說明</strong><br><br><em>Header 部分</em>：<ul style='list-style-type: none; padding-left: 20px;'><li><code>jku</code>：JWT 金鑰位置</li><li><code>kid</code>：金鑰識別碼</li><li><code>typ</code>：Token 類型（vc+sd-jwt）</li><li><code>alg</code>：簽章演算法（ES256）</li></ul><br><em>Payload 部分</em>：<ul style='list-style-type: none; padding-left: 20px;'><li><code>sub</code>：主體識別碼（DID 格式）</li><li><code>nbf</code>：生效時間</li><li><code>iss</code>：發證者識別碼（DID 格式）</li><li><code>cnf</code>：金鑰確認資訊<ul style='padding-left: 20px;'><li><code>jwk</code>：公鑰資訊（EC P-256 曲線）</li></ul></li><li><code>exp</code>：到期時間</li><li><code>vc</code>：憑證內容<ul style='padding-left: 20px;'><li><code>@context</code>：W3C 憑證規範</li><li><code>type</code>：憑證類型</li><li><code>credentialStatus</code>：狀態查詢資訊</li><li><code>credentialSchema</code>：憑證結構定義</li><li><code>credentialSubject</code>：憑證主體資料（SD-JWT 格式）</li></ul></li><li><code>nonce</code>：隨機數值</li><li><code>jti</code>：Token 唯一識別碼</li></ul></div><div style='margin-left: 10px; padding: 10px; border-left: 3px solid #27ae60; background-color: #f8f9fa;'><div style='background-color: #fff3e0; padding: 15px; border-radius: 5px; margin-top: 10px;'><br><p style='margin: 5px 0;'>當回應狀態為 200 時，開發人員應該要記錄：</p><ol style='margin: 5px 0; padding-left: 20px;'><li>哪一位使用者申請了電子卡</li><li>該電子卡的唯一序號（CID）</li></ol><p style='margin: 5px 0;'>取得 CID 的方法：</p><ol style='margin: 5px 0; padding-left: 20px;'><li>從回應中取得 credential 欄位的值（JWT Token 格式）</li><li>將 JWT Token 解析後，找到 <code>jti</code> 欄位</li><li>該欄位值格式為：<br><code>\"jti\":\"https://..../api/credential/a16187e9-755e-48ca-a9c0-622f76fe1360\"</code></li><li>其中 <code>credential/</code> 後面的值（如範例中的 <code>a16187e9-755e-48ca-a9c0-622f76fe1360</code>）即為此電子卡的唯一序號（CID）</li></ol></div>",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DwissuerVC402iResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "請求錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DWVC201ErrorMsg"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/schemas/ErrorResponses/500"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/credential/{cid}/{action}": {
+      "put": {
+        "tags": [
+          "發行端流程"
+        ],
+        "summary": "發行端 VC 卡片狀態變更",
+        "description": "<strong>功能說明</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 使用情境：</em><br><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0;'><strong style='color: #e67e22;'>🔑 主要用途</strong><br>當原始發證機關的資料有異動時，可透過此 API 對數位憑證皮夾 APP 中的電子卡進行撤銷的動作。</div><ol style='padding-left: 15px; margin-top: 5px;'><li>此 API 用於變更已發行 VC 卡片的狀態（如撤銷憑證）</li><li>需提供以下參數：<ul style='padding-left: 15px; margin-top: 3px;'><li><strong>cid</strong>：憑證唯一識別碼</li><li><strong>action</strong>：操作類型，目前支援 <code>revocation</code>（撤銷）</li></ul></li><li>操作成功後，憑證狀態將更新並反映在數位憑證皮夾 APP 中</li></ol><div style='background-color: #fff3e0; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #e67e22;'>⚠️ 注意事項</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 撤銷操作為不可逆動作，請謹慎執行</li><li>✦ 建議在執行撤銷前，先確認資料異動的必要性</li><li>✦ 撤銷後的憑證將無法再被使用</li></ul></div></div>",
+        "operationId": "vCItemDataRevoke",
+        "requestBody": {
+          "content": {
+            "application/json": {}
+          }
+        },
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "description": "<div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px;'><strong style='color: #2c3e50;'>🔍 參數來源說明</strong><br><p style='margin: 5px 0;'>此參數值需要透過以下步驟取得：</p><ol style='margin: 5px 0; padding-left: 20px;'><li>先呼叫 <code>/api/credential/nonce/{transactionId}</code> API</li><li>從回應中取得 JWT Token</li><li>解析 JWT Token 後，找到 <code>jti</code> 欄位</li><li>從 <code>jti</code> 欄位值中擷取 CID</li></ol><div style='background-color: #fff; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #e67e22;'>📝 範例說明</strong><br><code>jti</code> 欄位值格式：<br><code>\"jti\":\"https://..../api/credential/a16187e9-755e-48ca-a9c0-622f76fe1360\"</code><br><br>其中 <code>credential/</code> 後面的 <code>a16187e9-755e-48ca-a9c0-622f76fe1360</code> 即為所需的 CID 值</div></div>",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "a16187e9-755e-48ca-a9c0-622f76fe1360"
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "revocation"
+              ],
+              "description": "<div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px;'><strong style='color: #2c3e50;'>🔍 可用的操作類型</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 目前僅支援 <code>revocation</code>（廢止電子卡）</li></ul><div style='background-color: #fff3e0; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #e67e22;'>⚠️ 重要提醒</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 廢止操作為不可逆動作</li><li>✦ 執行後電子卡將永久失效</li><li>✦ 請謹慎評估後再執行</li></ul></div><div style='background-color: #e8f5e9; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2e7d32;'>📋 未來規劃</strong><br><p style='margin: 5px 0;'>系統將視業務需求擴充更多操作類型，所有更新都會同步更新本文件說明。</p></div></div>"
+            },
+            "description": "<div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 操作說明：</em><br><p style='margin: 5px 0;'>此參數用於指定要對電子卡執行的操作類型，目前支援：</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0;'><strong>撤銷：revocation</strong></p></div>"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DwissuerVC203iResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "請求錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DWVC301ErrorMsg"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/schemas/ErrorResponses/500"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DwissuerVCItemRequest": {
+        "required": [
+          "vcUid",
+          "fields"
+        ],
+        "type": "object",
+        "properties": {
+          "vcUid": {
+            "type": "string",
+            "description": "<strong>vcUid</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📌 取得 VC 模板代碼（vcUId）步驟如下：</em><br>1. 進入「發行端模組」頁面<br>2. 選擇「<code>VC管理 > VC建立管理</code>」<br>3. 找到需要的VC模板<br>4. 點選「<code>詳細資料</code>」<br>5. 於詳細頁面中，「<strong>證件類型</strong>」欄位即為該 VC 的 vcUId</div>",
+            "example": "00000000_vpms_20250506_0522"
+          },
+          "issuanceDate": {
+            "type": "string",
+            "description": "<strong>issuanceDate</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📌\n卡片發行日非必填，如填寫該張VC以此時間為發行日，如未填寫該張VC以當日為發行日。</div>",
+            "example": "20250430"
+          },
+          "expiredDate": {
+            "type": "string",
+            "description": "<strong>expiredDate</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📌\n卡片到期日非必填，如填寫該張VC以此時間為到期日，如未填寫該張VC以發行時間加上有效期間為到期日。</div>",
+            "example": "20250609"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DwissuerVCItemField"
+            },
+            "description": "<strong>證件資料欄位</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br>1. 用於定義 VC 中包含的實際資料欄位<br>2. 資料為 JSON 格式陣列<br>3. 每個欄位由key值和內容組成<br>4. ename：代表於發行端模組設定的KEY,content：代表此欄位的值</div>",
+            "example": [
+              {
+                "ename": "expiredDate",
+                "content": "20250513"
+              },
+              {
+                "ename": "name",
+                "content": "王O明"
+              },
+              {
+                "ename": "company",
+                "content": "MODA數位發展部"
+              },
+              {
+                "ename": "email",
+                "content": "service@wallet.gpv.tw"
+              }
+            ]
+          }
+        }
+      },
+      "DwissuerVCRequest": {
+        "required": [
+          "vcUid"
+        ],
+        "type": "object",
+        "properties": {
+          "vcUid": {
+            "type": "string",
+            "description": "<strong>vcUid</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📌 取得 VC 模板代碼（vcUId）步驟如下：</em><br>1. 進入「發行端模組」頁面<br>2. 選擇「<code>VC管理 > VC建立管理</code>」<br>3. 找到需要的VC模板<br>4. 點選「<code>詳細資料</code>」<br>5. 於詳細頁面中，「<strong>證件類型</strong>」欄位即為該 VC 的 vcUId</div>",
+            "example": "00000000_vpms_20250506_0522"
+          }
+        }
+      },
+      "DwissuerVCItemField": {
+        "type": "object",
+        "properties": {
+          "ename": {
+            "type": "string",
+            "description": "<strong>代表於發行端模組設定的KEY</strong>",
+            "example": "roc_birthday"
+          },
+          "content": {
+            "type": "string",
+            "description": "<strong>代表此欄位的值</strong>",
+            "example": "1101231"
+          }
+        }
+      },
+      "DwissuerVCItemResponse": {
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "string",
+            "description": "唯一交易序號",
+            "example": "be08beaa-d5f8-4a27-ac44-7ac7cad8b9eb"
+          },
+          "qrCode": {
+            "type": "string",
+            "description": "卡片發行  QR Code",
+            "example": "data:image/png;base64,..."
+          },
+          "deepLink": {
+            "type": "string",
+            "description": "點擊此連結可直接在手機中開啟數位憑證皮夾 App",
+            "example": "modadigitalwallet://credential_offer?..."
+          }
+        }
+      },
+      "DwissuerVC402iResponse": {
+        "type": "object",
+        "properties": {
+          "credential": {
+            "type": "string",
+            "description": "回傳一個符合 OID4VCI 協定的 JWT Token，可使用 JWT 解析工具進行內容分析",
+            "example": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "DwissuerVC203iResponse": {
+        "type": "object",
+        "properties": {
+          "credentialStatus": {
+            "type": "string",
+            "description": "REVOKED 代表撤銷成功",
+            "example": "REVOKED"
+          }
+        }
+      },
+      "Error400Response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "400"
+          },
+          "message": {
+            "type": "string",
+            "example": "用戶端錯誤：請檢查傳遞資料格式是否正確"
+          }
+        }
+      },
+      "Error500Response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "500"
+          },
+          "message": {
+            "type": "string",
+            "example": "伺服器端錯誤，請透過官方客服管道回報"
+          }
+        }
+      },
+      "ErrorResponses": {
+        "400": {
+          "description": "Bad Request - 請檢查以下項目：\n- 資料格式是否正確\n- 必填欄位是否都有填寫\n- 欄位型態是否正確\n- JSON 格式是否正確",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error400Response"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal Server Error - 系統發生錯誤，請透過<a href='https://www.wallet.gov.tw/zh-tw/News/30015.html'>官方客服管道</a>回報",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error500Response"
+              }
+            }
+          }
+        }
+      },
+      "DWVC101ErrorMsg": {
+        "type": "object",
+        "description": "#### 錯誤代碼表\n\n| code   | message                        |\n|--------|--------------------------------|\n| 11001  | 缺少參數或參數不合法          |\n| 11002  | 使用者未經過身分認證          |\n| 11003  | ID_token格式不正確            |\n| 11005  | nonce已重複                   |\n| 11006  | QR Code生成失敗              |\n| 11011  | 不支援此VC種類               |\n| 11021  | credential_policy_entity不存在 |\n| 11023  | pre-authorized code has already been change |\n| 11031  | id token中缺少tx_code         |\n| 11033  | DB func_switch JSON格式錯誤   |\n| 11500  | 伺服器內部錯誤                |\n| 11901  | business id錯誤               |\n| 12000  | credential_offer不存在       |\n| 12001  | credential_issuer_identifier不存在 |\n| 12002  | credential_offer_uri_path不存在 |\n| 12003  | db_secret不存在               |\n| 12004  | db_iv不存在                   |\n| 12005  | app_url_scheme不存在          |\n| 12009  | credential_url不存在         |\n| 13000  | id token 不存在 ",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "錯誤代碼",
+            "example": "11001"
+          },
+          "message": {
+            "type": "string",
+            "description": "錯誤訊息說明，對應 code",
+            "example": "缺少參數或參數不合法"
+          }
+        },
+        "example": {
+          "code": "11001",
+          "message": "缺少參數或參數不合法"
+        }
+      },
+      "DWVC102ErrorMsg": {
+        "type": "object",
+        "description": "#### 錯誤代碼表\n\n| code   | message                        |\n|--------|--------------------------------|\n| 11001  | 缺少參數或參數不合法          |\n| 11002  | 使用者未經過身分認證          |\n| 11003  | ID_token格式不正確            |\n| 11005  | nonce已重複                   |\n| 11006  | QR Code生成失敗              |\n| 11011  | 不支援此VC種類               |\n| 11021  | credential_policy_entity不存在 |\n| 11023  | pre-authorized code has already been change |\n| 11031  | id token中缺少tx_code         |\n| 11033  | DB func_switch JSON格式錯誤   |\n| 11500  | 伺服器內部錯誤                |\n| 11901  | business id錯誤               |\n| 12000  | credential_offer不存在       |\n| 12001  | credential_issuer_identifier不存在 |\n| 12002  | credential_offer_uri_path不存在 |\n| 12003  | db_secret不存在               |\n| 12004  | db_iv不存在                   |\n| 12005  | app_url_scheme不存在          |\n| 12009  | credential_url不存在         |\n| 13000  | id token 不存在 ",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "錯誤代碼",
+            "example": "11002"
+          },
+          "message": {
+            "type": "string",
+            "description": "錯誤訊息說明，對應 code",
+            "example": "使用者未經過身分認證"
+          }
+        },
+        "example": {
+          "code": "11002",
+          "message": "使用者未經過身分認證"
+        }
+      },
+      "DWVC201ErrorMsg": {
+        "type": "object",
+        "description": "#### 錯誤代碼表\n\n| code   | message                        |\n|--------|--------------------------------|\n| 11001  | 交易序號不存在          |\n| 61010  | 指定VC不存在，QR Code尚未被掃描          |\n| 61011  | 查詢VC錯誤          |\n| 61012  | 不合法的nonce ",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "錯誤代碼",
+            "example": "61010"
+          },
+          "message": {
+            "type": "string",
+            "description": "錯誤訊息說明，對應 code",
+            "example": "指定VC不存在，QR Code尚未被掃描"
+          }
+        },
+        "example": {
+          "code": "61010",
+          "message": "指定VC不存在，QR Code尚未被掃描"
+        }
+      },
+      "DWVC301ErrorMsg": {
+        "type": "object",
+        "description": "#### 錯誤代碼表\n\n| code   | message                             |\n|--------|-------------------------------------|\n| 61006  | 不合法的VC識別碼                   |\n| 61007  | VC撤銷錯誤                         |\n| 61008  | 推播通知錯誤                       |\n| 61009  | 推播回應錯誤                       |\n| 61010  | 指定VC不存在                       |\n| 62001  | 狀態清冊產製錯誤                   |\n| 62002  | 狀態清冊準備階段錯誤               |\n| 62003  | 狀態清冊簽署階段錯誤               |\n| 62004  | 狀態清冊自行驗證階段錯誤           |\n| 62006  | 狀態清冊type錯誤                   |\n| 62007  | 不合法的操作狀態清冊需求參數       |\n| 68001  | 資料庫查詢操作錯誤                 |\n| 68002  | 資料庫新增操作錯誤                 |\n| 68003  | 資料庫更新操作錯誤                 |\n| 68004  | 未註冊DID ",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "錯誤代碼",
+            "example": "61006"
+          },
+          "message": {
+            "type": "string",
+            "description": "錯誤訊息說明，對應 code",
+            "example": "不合法的VC識別碼"
+          }
+        },
+        "example": {
+          "code": "61006",
+          "message": "不合法的VC識別碼"
+        }
+      }
+    },
+    "securitySchemes": {
+      "api_key": {
+        "type": "apiKey",
+        "name": "Access-Token",
+        "in": "header"
+      }
+    }
+  }
+}

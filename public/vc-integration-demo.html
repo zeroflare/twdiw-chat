@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sandbox VC Integration Demo</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { color: #4EC9B0; }
+        h2 { color: #DCDCAA; margin-top: 30px; }
+        .demo-section {
+            background: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+            font-family: monospace;
+        }
+        button:hover { background: #1177bb; }
+        pre {
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-x: auto;
+            color: #CE9178;
+        }
+        .success { color: #4EC9B0; }
+        .error { color: #F48771; }
+        .info { color: #DCDCAA; }
+        code { color: #CE9178; }
+        .endpoint {
+            color: #569CD6;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Sandbox VC Integration Demo</h1>
+        <p class="info">
+            This page demonstrates integration with Taiwan government sandbox VC services.
+            <br>For production use, VCs should be obtained from users' wallet apps, not issued by the application.
+        </p>
+
+        <h2>📋 Sandbox Configuration</h2>
+        <div class="demo-section">
+            <p><strong class="endpoint">Verifier Endpoint:</strong> https://verifier-sandbox.wallet.gov.tw/</p>
+            <p><strong class="endpoint">Issuer Endpoint:</strong> https://issuer-sandbox.wallet.gov.tw</p>
+            <p><strong>Account:</strong> detectiveboys@googlegroups.com</p>
+            <p class="error">⚠️ Credentials stored in client code for demo only - never do this in production!</p>
+        </div>
+
+        <h2>1️⃣ Issue Test VC</h2>
+        <div class="demo-section">
+            <p>Issue a test Verifiable Credential for development/testing purposes.</p>
+            <button onclick="issueVC('vc_asset_player_rank_certificate', {rank: 'Sapphire Elite', level: 'premium'})">
+                Issue Asset Rank VC
+            </button>
+            <button onclick="issueVC('vc_credit_liability', {creditScore: 750, totalDebt: 500000})">
+                Issue Credit VC
+            </button>
+            <button onclick="issueVC('vc_liquid_finance', {liquidAssets: 2000000})">
+                Issue Liquid Finance VC
+            </button>
+            <pre id="issue-result">Click a button to issue a test VC...</pre>
+        </div>
+
+        <h2>2️⃣ Verify VC</h2>
+        <div class="demo-section">
+            <p>Verify a Verifiable Credential using the sandbox verifier.</p>
+            <button onclick="verifyStoredVC()">Verify Last Issued VC</button>
+            <pre id="verify-result">Issue a VC first, then verify it...</pre>
+        </div>
+
+        <h2>3️⃣ Match Flow Simulation</h2>
+        <div class="demo-section">
+            <p>Simulate the complete flow: Issue → Verify → Match with disclosure level</p>
+            <button onclick="simulateMatchFlow('minimal')">Minimal (No VC)</button>
+            <button onclick="simulateMatchFlow('basic')">Basic (Rank VC)</button>
+            <button onclick="simulateMatchFlow('standard')">Standard (Rank + Finance)</button>
+            <button onclick="simulateMatchFlow('premium')">Premium (All VCs)</button>
+            <pre id="flow-result">Click a disclosure level to simulate...</pre>
+        </div>
+
+        <h2>📊 Integration Status</h2>
+        <div class="demo-section">
+            <ul>
+                <li class="success">✅ Sandbox endpoints configured</li>
+                <li class="success">✅ Mock VC issuance implemented</li>
+                <li class="success">✅ Mock VC verification implemented</li>
+                <li class="error">⚠️ Real API calls require backend proxy (CORS limitation)</li>
+                <li class="error">⚠️ Token authentication should be server-side only</li>
+                <li class="info">ℹ️ Production: Users bring VCs from wallet apps, no issuance in-app</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let lastIssuedVC = null;
+
+        async function issueVC(credentialType, claims) {
+            const resultEl = document.getElementById('issue-result');
+            resultEl.textContent = 'Issuing VC...';
+
+            try {
+                const vc = await API.issueTestVC(credentialType, claims);
+                lastIssuedVC = vc;
+                resultEl.textContent = JSON.stringify(vc, null, 2);
+                console.log('Issued VC:', vc);
+            } catch (error) {
+                resultEl.textContent = 'Error: ' + error.message;
+                console.error('Issue error:', error);
+            }
+        }
+
+        async function verifyStoredVC() {
+            const resultEl = document.getElementById('verify-result');
+
+            if (!lastIssuedVC) {
+                resultEl.textContent = 'No VC to verify. Please issue a VC first.';
+                return;
+            }
+
+            resultEl.textContent = 'Verifying VC...';
+
+            try {
+                const result = await API.verifyVC({
+                    credential: lastIssuedVC,
+                    expectedIAL: 3,
+                    credentialType: lastIssuedVC.type[1],
+                    claims: lastIssuedVC.credentialSubject
+                });
+
+                resultEl.textContent = JSON.stringify(result, null, 2);
+                console.log('Verification result:', result);
+            } catch (error) {
+                resultEl.textContent = 'Error: ' + error.message;
+                console.error('Verification error:', error);
+            }
+        }
+
+        async function simulateMatchFlow(disclosureLevel) {
+            const resultEl = document.getElementById('flow-result');
+            resultEl.textContent = `Simulating ${disclosureLevel} match flow...\n\n`;
+
+            const log = (msg) => {
+                resultEl.textContent += msg + '\n';
+            };
+
+            try {
+                log(`📝 Step 1: User selects disclosure level: ${disclosureLevel}`);
+
+                if (disclosureLevel === 'minimal') {
+                    log('⚠️  Minimal level: No VC required (self-declared info only)');
+                    log('✅ Proceed to matching with lower weight');
+                } else {
+                    log(`\n🔐 Step 2: Issue required VCs for ${disclosureLevel} level...`);
+
+                    // Issue appropriate VCs based on level
+                    const vcs = [];
+
+                    if (['basic', 'standard', 'premium'].includes(disclosureLevel)) {
+                        log('   - Issuing vc_asset_player_rank_certificate...');
+                        const rankVC = await API.issueTestVC('vc_asset_player_rank_certificate', {
+                            rank: 'Sapphire Elite'
+                        });
+                        vcs.push(rankVC);
+                    }
+
+                    if (['standard', 'premium'].includes(disclosureLevel)) {
+                        log('   - Issuing vc_credit_liability...');
+                        const creditVC = await API.issueTestVC('vc_credit_liability', {
+                            creditScore: 750
+                        });
+                        vcs.push(creditVC);
+
+                        log('   - Issuing vc_liquid_finance...');
+                        const liquidVC = await API.issueTestVC('vc_liquid_finance', {
+                            liquidAssets: 2000000
+                        });
+                        vcs.push(liquidVC);
+                    }
+
+                    if (disclosureLevel === 'premium') {
+                        log('   - Issuing vc_personal_property...');
+                        const propertyVC = await API.issueTestVC('vc_personal_property', {
+                            totalValue: 5000000
+                        });
+                        vcs.push(propertyVC);
+                    }
+
+                    log(`\n✅ Step 3: Verify ${vcs.length} VCs...`);
+                    for (const vc of vcs) {
+                        const result = await API.verifyVC({
+                            credential: vc,
+                            expectedIAL: 3
+                        });
+                        log(`   ✓ ${vc.type[1]}: IAL=${result.ial}, Valid=${result.valid}`);
+                    }
+                }
+
+                log('\n🎯 Step 4: Calculate match score...');
+                const baseScore = {
+                    'minimal': 50,
+                    'basic': 65,
+                    'standard': 80,
+                    'premium': 95
+                }[disclosureLevel];
+
+                log(`   Base score for ${disclosureLevel}: ${baseScore}/100`);
+                log(`   + Age preference match: +5`);
+                log(`   + Interest overlap: +7`);
+                const finalScore = baseScore + 5 + 7;
+                log(`   = Final match score: ${finalScore}/100`);
+
+                log('\n✅ Match flow complete! User can now open chat.');
+
+            } catch (error) {
+                log('\n❌ Error: ' + error.message);
+                console.error('Flow error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

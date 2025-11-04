@@ -1,32 +1,311 @@
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<button id="button" type="button">Fetch a random UUID</button>
-		<output id="random" for="button"></output>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日配對聊天服務 - MVP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-bottom: 24px; }
+        h2 { color: #555; margin-bottom: 16px; font-size: 20px; }
+        .step { display: none; }
+        .step.active { display: block; }
+        .disclosure-level {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .disclosure-level:hover { border-color: #4CAF50; background: #f9f9f9; }
+        .disclosure-level.selected { border-color: #4CAF50; background: #e8f5e9; }
+        .disclosure-level h3 { font-size: 16px; margin-bottom: 8px; color: #333; }
+        .disclosure-level p { font-size: 14px; color: #666; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 16px;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .preference-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .match-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            margin: 24px 0;
+        }
+        .match-card h3 { font-size: 24px; margin-bottom: 16px; }
+        .match-card .info {
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .chat-container {
+            margin-top: 24px;
+            height: 500px;
+        }
+        .chat-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+        }
+        .progress {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 32px;
+            padding: 0 20px;
+        }
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            color: #999;
+        }
+        .progress-step.completed { color: #4CAF50; font-weight: 600; }
+        .progress-step.active { color: #4CAF50; font-weight: 600; }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+            color: #856404;
+        }
+        .vc-verification {
+            display: none;
+            margin-top: 24px;
+            padding: 24px;
+            border: 2px solid #2196F3;
+            border-radius: 8px;
+            background: #e3f2fd;
+        }
+        .vc-verification.active {
+            display: block;
+        }
+        .qr-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .qr-container img {
+            max-width: 300px;
+            border: 4px solid white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .verification-status {
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 16px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .verification-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .verification-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .verification-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-top-color: #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>每日配對聊天服務 (MVP Demo)</h1>
 
-			const button = document.getElementById("button");
-			button.addEventListener("click", () => {
-				fetch('/random')
-					.then((resp) => resp.text())
-					.then((text) => {
-						const random = document.getElementById('random');
-						random.textContent = text;
-					});
-			});
-		</script>
-	</body>
+        <div class="progress">
+            <div class="progress-step" id="progress-1">1. 揭露設定</div>
+            <div class="progress-step" id="progress-2">2. 偏好設定</div>
+            <div class="progress-step" id="progress-3">3. 配對結果</div>
+            <div class="progress-step" id="progress-4">4. 啟動聊天</div>
+        </div>
+
+        <!-- Step 1: VC Disclosure -->
+        <div class="step active" id="step-1">
+            <div class="card">
+                <h2>步驟 1: 選擇揭露等級</h2>
+                <p style="margin-bottom: 16px; color: #666;">請選擇您今日願意揭露的資訊等級，這將影響配對品質。</p>
+
+                <div class="disclosure-level" data-level="minimal">
+                    <h3>Minimal - 基本配對</h3>
+                    <p>僅自我宣告基本資訊（年齡、性別、興趣），無需提供 VC</p>
+                </div>
+
+                <div class="disclosure-level" data-level="basic">
+                    <h3>Basic - 可驗證階級</h3>
+                    <p>提供階級卡 VC (vc_asset_player_rank_certificate)</p>
+                </div>
+
+                <div class="disclosure-level" data-level="standard">
+                    <h3>Standard - 信用負債</h3>
+                    <p>Basic + 信用負債 VC (vp_credit_liability_certificate)</p>
+                </div>
+
+                <div class="disclosure-level" data-level="premium">
+                    <h3>Premium - 流動資產</h3>
+                    <p>Standard + 流動資產 VC (vp_liquid_finance_certificate)</p>
+                </div>
+
+                <div class="disclosure-level" data-level="premium-plus">
+                    <h3>Premium Plus - 動產</h3>
+                    <p>Premium + 動產 VC (vp_personal_property_certificate)</p>
+                </div>
+
+                <div class="disclosure-level" data-level="ultimate">
+                    <h3>Ultimate - 不動產</h3>
+                    <p>Premium Plus + 不動產 VC (vp_real_estate_asset_certificate)</p>
+                </div>
+
+                <!-- VC Verification Section (shown for Basic/Standard/Premium) -->
+                <div class="vc-verification" id="vc-verification">
+                    <h3 style="color: #1976D2; margin-bottom: 16px;">📱 VC 驗證</h3>
+                    <p style="margin-bottom: 16px;">請使用 MODA 數位錢包掃描 QR Code 完成驗證</p>
+
+                    <div class="qr-container" id="qr-container">
+                        <!-- QR code will be displayed here -->
+                    </div>
+
+                    <div class="verification-status pending" id="verification-status">
+                        <div class="spinner"></div>
+                        等待驗證中...
+                    </div>
+                </div>
+
+                <button id="btn-next-1" disabled>下一步：設定偏好</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Preferences -->
+        <div class="step" id="step-2">
+            <div class="card">
+                <h2>步驟 2: 設定偏好</h2>
+
+                <div class="preference-group">
+                    <label>期望年齡範圍 (下限)</label>
+                    <input type="number" id="age-min" value="25" min="18" max="99">
+                </div>
+
+                <div class="preference-group">
+                    <label>期望年齡範圍 (上限)</label>
+                    <input type="number" id="age-max" value="35" min="18" max="99">
+                </div>
+
+                <div class="preference-group">
+                    <label>興趣標籤 (以逗號分隔)</label>
+                    <input type="text" id="interests" value="閱讀, 旅行, 美食" placeholder="例如：閱讀, 旅行, 美食">
+                </div>
+
+                <button id="btn-back-2">上一步</button>
+                <button id="btn-next-2">下一步：生成配對</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Match Result -->
+        <div class="step" id="step-3">
+            <div class="card">
+                <h2>步驟 3: 今日配對結果</h2>
+
+                <div class="warning">
+                    <strong>Demo 說明:</strong> 這是模擬的配對結果。實際環境需透過後端 API 驗證 VC 並計算配對分數。
+                </div>
+
+                <div class="match-card" id="match-card">
+                    <h3>您的配對對象</h3>
+                    <div class="info">
+                        <p><strong>階級:</strong> <span id="match-rank">Sapphire Elite</span></p>
+                        <p><strong>VC 來源:</strong> vc_asset_player_rank_certificate</p>
+                        <p><strong>IAL:</strong> 3 | <strong>有效至:</strong> 2025/11/25</p>
+                        <p style="margin-top: 12px; font-size: 14px;">配對分數: <strong>87/100</strong></p>
+                    </div>
+                    <p style="margin-top: 16px; font-size: 14px; opacity: 0.9;">
+                        基於您的揭露等級與偏好，這是今日最佳配對
+                    </p>
+                </div>
+
+                <button id="btn-back-3">上一步</button>
+                <button id="btn-next-3">下一步：開啟聊天</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Chat -->
+        <div class="step" id="step-4">
+            <div class="card">
+                <h2>步驟 4: 聊天互動</h2>
+
+                <div class="warning">
+                    <strong>隱私提醒:</strong> 您即將進入 tlk.io 聊天室。請確認願意分享您的暱稱。您可以隨時撤銷授權並離開聊天。
+                </div>
+
+                <p style="margin: 16px 0; color: #666;">
+                    <strong>聊天頻道:</strong> <code id="channel-id">daily-match-demo-123456</code>
+                </p>
+
+                <div class="chat-container" id="chat-container">
+                    <!-- tlk.io iframe will be loaded here -->
+                </div>
+
+                <button id="btn-back-4" style="background: #f44336;">結束聊天</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
 </html>

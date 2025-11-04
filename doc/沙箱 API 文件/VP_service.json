@@ -1,0 +1,278 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "數位發展部-數位憑證皮夾-驗證端服務API",
+    "description": "<h3>🔑 使用前須知</h3>  <hr/>  <ol>    <li><strong>點選右方 Authorize 按鈕</strong></li>    <li>  <strong>查看申請時收到的電子郵件</strong><br/>  <em>（主旨：【數位憑證皮夾】驗證端沙盒系統_帳號啟用通知）</em></li>    <li>  <strong>將信件中的驗證端沙盒系統 AccessToken 填入 Value 欄位</strong></li>    <li><strong>開始測試 API</strong></li>  </ol>  <p><strong>⚠️ 注意事項：</strong>發行端、驗證端有各自不同的 AccessToken 資訊，請確認使用正確的 Token。</p>  <hr/>  <h3>📋 操作指引</h3>  <ol>    <li>      <strong>查看物件詳細結構</strong><br/>        <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #f5a623;'>    <em>📌 提示：</em><br>    點擊請求或回應區塊中的 <strong>Schema</strong> 標籤，可以查看完整的物件定義與結構。    <br>          </div>    </li>  </ol>  <hr/>  <h3>📋 驗證端系統流程圖</h3>  <p>&nbsp;&nbsp;&nbsp;&nbsp;<strong>📑 詳細流程圖或說明</strong>：<a href='https://drive.google.com/file/d/18AYCDLn7M6WyxXHfZGEgIwBI7B8eSp5a/view?usp=sharing' target='_blank'>  <strong>點此查看</strong></a></p>  <hr/>  <h3>🔒 安全性規範</h3>  <div style='margin-left: 10px; padding: 10px; border-left: 3px solid #2ecc71; background-color: #f9fdfb;'>    <strong style='color: #27ae60;'>📋 API 安全性原則</strong>    <ul style='list-style-type: none; padding-left: 0; margin-top: 10px;'>      <li>✦ 所有 API 呼叫必須使用 HTTPS (TLS 1.3 以上) 進行加密傳輸</li>      <li>✦ Access Token 有效期限為 365 天(暫定)，請定期更新</li>      <li>✦ 每個 IP 位址的呼叫次數限制為每小時 3600 次</li>      <li>✦ 系統會自動偵測異常的 API 呼叫模式並進行阻擋</li>    </ul>    <strong style='color: #27ae60; margin-top: 15px; display: block;'>🛡️ 資料保護措施</strong>    <ul style='list-style-type: none; padding-left: 0; margin-top: 10px;'>      <li>✦ 此為測試階段，請勿上傳具個資之資料</li>      <li>✦ 交易序號（transactionId）採用 UUID v4 確保唯一性</li>      <li>✦ QR Code 具有時效性，超過 5 分鐘後自動失效</li>    </ul>    <strong style='color: #27ae60; margin-top: 15px; display: block;'>⚠️ 安全性建議</strong>    <ul style='list-style-type: none; padding-left: 0; margin-top: 10px;'>      <li>✦ 請勿在公開場合或程式碼中暴露 Access Token</li>      <li>✦ 建議實作 Access Token 輪換機制</li>      <li>✦ 保存交易紀錄時，建議加密儲存敏感資訊</li>      <li>✦ 定期清理過期的交易資料</li>    </ul>    <strong style='color: #27ae60; margin-top: 15px; display: block;'>🔍 異常處理機制</strong>    <ul style='list-style-type: none; padding-left: 0; margin-top: 10px;'>      <li>✦ 連續呼叫失敗超過 5 次，帳號將被暫時鎖定 15 分鐘</li>      <li>✦ 系統偵測到異常存取模式時，將自動通知管理員</li>      <li>✦ 每個 API 呼叫都會記錄詳細的存取日誌</li>      <li>✦ 系統定期進行安全性掃描與弱點檢測</li>    </ul>  </div>  <hr/>",
+    "termsOfService": "",
+    "contact": {
+      "name": "",
+      "url": "",
+      "email": ""
+    },
+    "license": {
+      "name": "",
+      "url": ""
+    },
+    "version": "0.0.1"
+  },
+  "servers": [
+    {
+      "url": "https://verifier-sandbox.wallet.gov.tw/",
+      "description": ""
+    }
+  ],
+  "tags": [
+    {
+      "name": "驗證端流程",
+      "description": ""
+    }
+  ],
+  "paths": {
+    "/api/oidvp/qrcode": {
+      "get": {
+        "tags": [
+          "驗證端流程"
+        ],
+        "summary": "驗證端產生授權請求 QRcode",
+        "description": "<strong>功能說明</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 使用流程：</em><br><ol style='padding-left: 15px; margin-top: 5px;'><li>請先在驗證端沙盒系統中，透過<strong>建立 VP</strong>功能建立一張 VP 範本</li><li>呼叫此 API 後，將取得以下重要回應：<ul style='padding-left: 15px; margin-top: 3px;'><li><strong>qrcodeImage</strong>：可顯示在網頁上的 QR Code 圖片</li><li><strong>authUri</strong>：可觸發數位憑證皮夾 APP 開啟的 DeepLink 連結</li><li><strong style='color: #e67e22;'>transactionId</strong>：<em>此為後續查詢驗證結果的重要依據，開發者必須特別關注並保存此值</em></li></ul></li></ol><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 使用情境</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 民眾掃描 QR Code 後，可選擇要提供的憑證進行上傳</li><li>✦ 透過 DeepLink 連結可直接開啟數位憑證皮夾 APP</li><li>✦ 使用 transactionId 可查詢民眾上傳資料的結果</li></ul></div></div>",
+        "operationId": "getVPItemQrcode",
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "query",
+            "description": "<strong>驗證服務代碼</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 取得方式：</em><br><ol style='padding-left: 15px; margin-top: 5px;'><li>進入驗證端沙盒系統</li><li>點選「<strong>建立 VP</strong>」功能</li><li>選擇欲產生 VP QRCode 的資料</li><li>點選「<strong>詳細資料</strong>」按鈕</li><li>在顯示的頁面上找到「<strong style='color: #e67e22;'>驗證服務代碼(ref)</strong>」欄位</li><li>完整複製該欄位的值並傳入此參數</li></ol><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>⚠️ 注意事項</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 請確保完整複製驗證服務代碼的值</li><li>✦ 此代碼用於識別特定的 VP 範本</li><li>✦ 錯誤的代碼將導致 API 呼叫失敗</li></ul></div></div>",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "27950876_vp_swaggerui_test_2"
+          },
+          {
+            "name": "transactionId",
+            "in": "query",
+            "description": "<strong>本次請求的唯一交易序號</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 使用說明：</em><br><p style='margin: 5px 0;'>此欄位用於識別每筆交易，請開發人員自行產生一組不可重複的隨機碼，長度不可超過 50 個字元。</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 建議作法</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 建議採用 UUID 格式作為唯一識別碼</li><li>✦ 確保每次呼叫 API 時使用不同的值</li><li>✦ 此值將用於後續查詢民眾上傳資料的結果</li><li>✦ 建議使用標準 UUID v4 格式（36 個字元）</li></ul></div><div style='background-color: #fff3e0; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #e67e22;'>⚠️ 注意事項</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 重複的交易序號將導致系統錯誤</li><li>✦ 請妥善保存此值以利後續查詢</li><li>✦ 建議在系統中建立交易序號管理機制</li><li>✦ 字串長度不可超過 50 個字元</li></ul></div></div>",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "129e6f5d-6e2a-4e9b-99e8-8ded5f2886c6"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DWverifierVP101iResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ErrorResponses/400"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ErrorResponses/500"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/oidvp/result": {
+      "post": {
+        "tags": [
+          "驗證端流程"
+        ],
+        "summary": "驗證端查詢VP展示驗證結果",
+        "description": "<strong>功能說明</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 主要功能：</em><br><p style='margin: 5px 0;'>此 API 用於取得使用者透過數位憑證皮夾 APP 掃描 QRCode 後的上傳資料結果。當使用者掃描由 <code>/api/oidvp/qrcode</code> 產生的 QRCode 並完成資料上傳後，系統可透過此 API 查詢上傳結果。</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 使用前提</strong><br><ol style='padding-left: 20px; margin-top: 5px;'><li>必須先完成 <code>/api/oidvp/qrcode</code> API 的呼叫</li><li>系統需要記錄該次呼叫回傳的 <code>transactionId</code></li><li>使用記錄的 <code>transactionId</code> 作為本 API 的查詢參數</li></ol></div><div style='background-color: #fff3e0; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #e67e22;'>⚠️ 注意事項</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 請妥善保存 <code>transactionId</code>，此為查詢唯一依據</li><li>✦ 建議系統實作交易序號的管理機制</li><li>✦ 可透過定期查詢來追蹤使用者上傳狀態</li></ul></div><div style='background-color: #e8f5e9; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>📊 狀態碼說明</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ <strong>200</strong>：使用者已成功上傳資料，可取得驗證結果</li><li>✦ <strong>400</strong>：使用者尚未上傳資料，請稍後再試</li><li>✦ <strong>500</strong>：系統發生錯誤，請透過官方客服管道回報</li></ul></div></div>",
+        "operationId": "getVPItemVerifyResult",
+
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "transactionId": {
+                    "type": "string",
+                    "description": "<strong>交易序號</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'>此欄位為呼叫 <code>/api/oidvp/qrcode</code> API 所產生的交易序號，用於查詢該筆交易的上傳資料結果。</div>",
+                    "example": "129e6f5d-6e2a-4e9b-99e8-8ded5f2886c6"
+                  }
+                },
+                "required": ["transactionId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DWverifierVP301iResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/schemas/ErrorResponses/400"
+          },
+          "500": {
+            "$ref": "#/components/schemas/ErrorResponses/500"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error400Response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "400"
+          },
+          "message": {
+            "type": "string",
+            "example": "用戶端錯誤：請檢查傳遞資料格式是否正確"
+          }
+        }
+      },
+      "Error500Response": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "500"
+          },
+          "message": {
+            "type": "string",
+            "example": "伺服器端錯誤，請透過官方客服管道回報"
+          }
+        }
+      },
+      "ErrorResponses": {
+        "400": {
+          "description": "Bad Request - 請檢查以下項目：\n- 資料格式是否正確\n- 必填欄位是否都有填寫\n- 欄位型態是否正確\n- JSON 格式是否正確",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error400Response"
+              }
+            }
+          }
+        },
+        "500": {
+          "description": "Internal Server Error - 系統發生錯誤，請透過<a href='https://www.wallet.gov.tw/zh-tw/News/30015.html'>官方客服管道</a>回報",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error500Response"
+              }
+            }
+          }
+        }
+      },
+      "DWverifierVP101iResponse": {
+        "type": "object",
+        "description": "此為呼叫 /api/oidvp/qrcode 的回傳物件",
+        "properties": {
+          "transactionId": {
+            "type": "string",
+            "description": "此為 Request 上傳的資料，用於後續查詢民眾上傳資料的結果",
+            "example": "104158f9-b1dc-4f76-847e-86f6af36d917"
+          },
+          "qrcodeImage": {
+            "type": "string",
+            "description": "可直接顯示於網頁的 QRCode 資料，格式為 base64 編碼的圖片",
+            "example": "data:image/png;base64,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"
+          },
+          "authUri": {
+            "type": "string",
+            "description": "可啟動數位憑證皮夾 APP 觸發民眾自主上傳資料的連結",
+            "example": "modadigitalwallet://authorize?client_id_scheme=redirect_uri&state=Fa0gM_FT7bWbETqS_ch6or2UOeirGcR5fA2JcFzeTZo&nonce=Frk4iaBCotNVdjS8uzJF5XH11c2wI8ePyAqiQDQ-s1A&client_id=https%3A%2F%2Fverifier-oidvp-uat.wallet.gov.tw%2Fapi%2Foidvp%2Fauthorization-response&request_uri=https%3A%2F%2Fverifier-oidvp-uat.wallet.gov.tw%2Fapi%2Foidvp%2Frequest%2FFa0gM_FT7bWbETqS_ch6or2UOeirGcR5fA2JcFzeTZo&response_mode=direct_post"
+          }
+        }
+      },
+      "DWverifierVP301iResponse": {
+        "type": "object",
+        "description": "<strong>驗證結果回傳物件</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>此為呼叫 <code>/api/oidvp/result</code> API 時的回傳物件，包含使用者上傳資料的驗證結果及相關資訊。</p></div>",
+        "properties": {
+          "verifyResult": {
+            "type": "boolean",
+            "description": "<strong>驗證結果</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>表示本次驗證的結果狀態。</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 可能值</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ <strong>true</strong>：驗證成功</li><li>✦ <strong>false</strong>：驗證失敗</li></ul></div></div>",
+            "example": true
+          },
+          "resultDescription": {
+            "type": "string",
+            "description": "<strong>驗證結果描述</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>提供驗證結果的詳細說明文字。</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 常見值</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ <strong>success</strong>：驗證成功</li><li>✦ <strong>failed</strong>：驗證失敗</li><li>✦ <strong>expired</strong>：憑證已過期</li><li>✦ <strong>invalid</strong>：憑證無效</li></ul></div></div>",
+            "example": "success"
+          },
+          "transactionId": {
+            "type": "string",
+            "description": "<strong>本次驗證結果的交易序號</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>本次驗證結果對應的交易序號，與呼叫 API 時使用的 transactionId 相同。</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 用途</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 用於追蹤特定交易的驗證結果</li><li>✦ 可作為後續查詢的依據</li><li>✦ 建議系統記錄此值以利追蹤</li></ul></div></div>",
+            "example": "104158f9-b1dc-4f76-847e-86f6af36d917"
+          },
+          "data": {
+            "type": "array",
+            "description": "<strong>憑證資料</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>使用者上傳的數位憑證資料，包含憑證類型及相關聲明資訊。</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 資料結構</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ <strong>credentialType</strong>：憑證類型識別碼</li><li>✦ <strong>claims</strong>：憑證中的聲明資料陣列</li></ul></div></div>",
+            "items": {
+              "type": "object",
+              "properties": {
+                "credentialType": {
+                  "type": "string",
+                  "description": "<strong>vc資料</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>數位憑證的類型識別碼，用於識別不同種類的憑證。</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 格式</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ 通常為發行者代碼加上憑證類型代碼</li><li>✦ 用於識別憑證的來源和類型</li></ul></div></div>",
+                  "example": "VirtualCardCredential"
+                },
+                "claims": {
+                  "type": "array",
+                  "description": "<strong>聲明資料</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>憑證中包含的聲明資料陣列，每個聲明包含英文名稱、中文名稱和值。</p><div style='background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;'><strong style='color: #2c3e50;'>🔍 結構說明</strong><br><ul style='list-style-type: none; padding-left: 0; margin-top: 5px;'><li>✦ <strong>ename</strong>：聲明的英文名稱</li><li>✦ <strong>cname</strong>：聲明的中文名稱</li><li>✦ <strong>value</strong>：聲明的實際值</li></ul></div></div>",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "ename": {
+                        "type": "string",
+                        "description": "<strong>英文名稱</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>聲明的英文欄位名稱，用於程式處理和識別。</p></div>",
+                        "example": "name"
+                      },
+                      "cname": {
+                        "type": "string",
+                        "description": "<strong>中文名稱</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>聲明的中文顯示名稱，用於使用者介面顯示。</p></div>",
+                        "example": "姓名"
+                      },
+                      "value": {
+                        "type": "string",
+                        "description": "<strong>聲明值</strong> <div style='margin-left: 10px; padding: 5px; border-left: 3px solid #25a0e1;'><em>📝 說明：</em><br><p style='margin: 5px 0;'>聲明的實際內容值，為使用者提供的資料。</p></div>",
+                        "example": "黃ＯＯ"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "api_key": {
+        "type": "apiKey",
+        "name": "Access-Token",
+        "in": "header"
+      }
+    }
+  }
+}
