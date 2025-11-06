@@ -1,16 +1,30 @@
 {
-	"name": "twdiw-chat",
-	"version": "0.0.0",
-	"private": true,
-	"scripts": {
-		"deploy": "wrangler deploy",
-		"dev": "wrangler dev",
-		"start": "wrangler dev",
-		"test": "vitest"
-	},
-	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.8.19",
-		"vitest": "~3.2.0",
-		"wrangler": "^4.45.3"
-	}
+  "name": "twdiw-chat",
+  "version": "1.0.0",
+  "description": "A token-gated chat application based on Hono and Cloudflare Workers.",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev src/index.ts",
+    "deploy": "wrangler deploy --minify src/index.ts",
+    "test": "vitest"
+  },
+  "keywords": [
+    "hono",
+    "cloudflare-workers",
+    "verifiable-credentials",
+    "oidc"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hono": "^4.4.6",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240512.0",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0",
+    "wrangler": "^3.57.0"
+  }
 }

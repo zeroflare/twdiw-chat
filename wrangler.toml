@@ -1,0 +1,23 @@
+# Top-level configuration
+name = "twdiw-chat"
+main = "src/index.ts"
+compatibility_date = "2024-05-15"
+
+# Environment variables for the Worker
+# For local development, you can place secrets here.
+#
+# !!! CD/PRODUCTION NOTE !!!
+# For Continuous Deployment, do NOT commit the real TWDIW_API_TOKEN here.
+# It should be set as a secret in the Cloudflare dashboard or via the command:
+# `wrangler secret put TWDIW_API_TOKEN`
+# The variable will still be available under `c.env.TWDIW_API_TOKEN`.
+[vars]
+TWDIW_API_URL = "https://verifier-sandbox.wallet.gov.tw"
+TWDIW_API_TOKEN = "O1DhqxTYuxLh43UvyMuitH1xufPGlijb"
+
+# Bindings for databases, KV namespaces, etc.
+# We will define our D1 database here for storing user profiles and sessions.
+[[d1_databases]]
+binding = "DB"
+database_name = "twdiw-chat-db"
+database_id = "<YOUR_DATABASE_ID>" # This will be filled in after we create the DB
