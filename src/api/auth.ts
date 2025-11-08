@@ -117,11 +117,13 @@ app.get('/callback', async (c) => {
     console.log('OIDC Callback received:', { code: !!code, state: !!state, error });
 
     if (error) {
-      return c.redirect('/?auth=error&type=oidc_error');
+      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
+      return c.redirect(`${frontendUrl}/?auth=error&type=oidc_error`);
     }
 
     if (!code || !state) {
-      return c.redirect('/?auth=error&type=missing_params');
+      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
+      return c.redirect(`${frontendUrl}/?auth=error&type=missing_params`);
     }
 
     // Retrieve stored PKCE data with KV fallback
@@ -157,7 +159,8 @@ app.get('/callback', async (c) => {
     console.log('Stored OIDC data:', { hasStoredData: !!storedData });
 
     if (!storedData) {
-      return c.redirect('/?auth=error&type=missing_state');
+      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
+      return c.redirect(`${frontendUrl}/?auth=error&type=missing_state`);
     }
 
     // Verify HMAC signature for integrity protection
@@ -166,7 +169,8 @@ app.get('/callback', async (c) => {
 
     if (!verifyResult.valid || !verifyResult.value) {
       console.error('OIDC state signature verification failed');
-      return c.redirect('/?auth=error&type=invalid_signature');
+      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
+      return c.redirect(`${frontendUrl}/?auth=error&type=invalid_signature`);
     }
 
     let parsedData;
@@ -174,7 +178,8 @@ app.get('/callback', async (c) => {
       parsedData = JSON.parse(verifyResult.value);
     } catch (parseError) {
       console.error('Failed to parse OIDC state:', parseError);
-      return c.redirect('/?auth=error&type=invalid_state_data');
+      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
+      return c.redirect(`${frontendUrl}/?auth=error&type=invalid_state_data`);
     }
 
     const { state: storedState, codeVerifier } = parsedData;
@@ -264,16 +269,17 @@ app.get('/callback', async (c) => {
       path: '/'
     });
 
-    console.log('Login successful for user:', claims.sub);
+    console.log('Login successful for user:', subjectId);
 
-    // Redirect to frontend route instead of API endpoint to prevent infinite loop
-    // Frontend OIDCCallback component will handle auth state refresh and redirect to dashboard
-    return c.redirect('/?auth=success');
+    // Return JWT token to frontend instead of setting cookie
+    const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
+    return c.redirect(`${frontendUrl}/?auth=success&token=${sessionToken}`);
 
   } catch (error) {
     console.error('OIDC callback failed:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    return c.redirect('/?auth=error&type=auth_failed');
+    const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
+    return c.redirect(`${frontendUrl}/?auth=error&type=auth_failed`);
   }
 });
 

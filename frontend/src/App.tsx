@@ -22,12 +22,19 @@ function AppContent() {
     
     const searchParams = new URLSearchParams(location.search);
     const authStatus = searchParams.get('auth');
+    const token = searchParams.get('token');
     
     console.log('authStatus:', authStatus);
     
     if (authStatus === 'success') {
       console.log('Auth success detected, refreshing user state');
       console.log('About to call refreshUser()...');
+      
+      // Store token if provided
+      if (token) {
+        localStorage.setItem('auth_token', token);
+        console.log('Token stored in localStorage');
+      }
       
       refreshUser().then(() => {
         console.log('refreshUser() completed. About to navigate...');
