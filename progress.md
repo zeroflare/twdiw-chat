@@ -1,4 +1,38 @@
 # Progress Log - twdiw-chat
+## Current Session - COMPLETED (2025-11-09 - QR Code Display Persistence Fix v2)
+- **Start Time**: 2025-11-09T05:38:00+08:00
+- **Target**: Fix QR code disappearing issue in VC verification frontend (实际修复)
+- **Phase**: Manual Fix - COMPLETED
+- **Gate**: Low
+- **Method**: Implement correct state preservation logic
+
+## Phase Results - Current Session (2025-11-09 - QR Code Display Fix v2)
+- **Summary**: Fixed QR code disappearing issue by implementing correct state merging logic in polling callback
+- **Root Cause**: Previous fix was not properly implemented - polling callback was still using `setVerification(result)` instead of state merging
+- **Investigation Results**:
+  - QR code appeared briefly then disappeared during verification polling
+  - Current code at line 53 was `setVerification(result)` - direct state overwrite
+  - Polling responses lack `qrCodeUrl` field: `{transactionId, status: "pending", pollInterval: 5000}`
+  - State was being completely overwritten, losing qrCodeUrl
+- **Method**: Implement proper state preservation fix
+  - **Analysis**: Line 53 in VCVerification.tsx was overwriting entire state object
+  - **Issue**: Polling responses don't include qrCodeUrl field, causing loss
+  - **Fix**: Preserve qrCodeUrl from previous state when updating verification status
+- **ChangedPaths**:
+  - frontend/src/components/vc/VCVerification.tsx (modified):
+    * Line 52-53: Changed from `setVerification(result)` to preserve qrCodeUrl
+    * Added state merging: `setVerification(prev => ({ ...result, qrCodeUrl: result.qrCodeUrl || prev?.qrCodeUrl }))`
+    * QR code now persists throughout verification polling cycle
+- **AcceptanceCheck**: yes - QR code now:
+  - Displays consistently without disappearing
+  - Persists throughout verification polling process
+  - Only clears when verification is reset or completed
+  - Maintains existing verification flow functionality
+- **RollbackPlan**:
+  1. Revert frontend/src/components/vc/VCVerification.tsx lines 52-53:
+     - Change back to: `setVerification(result);`
+     - Remove state merging logic
+
 ## Current Session - COMPLETED (2025-11-09 - QR Code Display Persistence Fix)
 - **Start Time**: 2025-11-09T04:54:00+08:00
 - **Target**: Fix QR code disappearing issue in VC verification frontend
