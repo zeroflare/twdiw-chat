@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 
 interface SessionInfo {
   id: string;
@@ -12,7 +13,6 @@ interface SessionInfo {
 
 interface ChatData {
   channelId: string;
-  embedHtml: string;
   nickname: string;
   sessionInfo: SessionInfo;
 }
@@ -20,79 +20,21 @@ interface ChatData {
 export function ChatSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [chatData, setChatData] = useState<ChatData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [chatLoading, setChatLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isRequestingRef = useRef(false); // Prevent duplicate requests
 
-  useEffect(() => {
-    if (!sessionId) {
-      navigate('/');
+  const loadChatSession = useCallback(async () => {
+    if (!sessionId || isRequestingRef.current) {
       return;
     }
 
-    loadChatSession();
-  }, [sessionId]);
-
-  useEffect(() => {
-    // Load tlk.io script when chat data is available
-    if (chatData) {
-      console.log('ChatSession: Loading tlk.io script...');
-      
-      // Set a small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        // Check if script already exists
-        const existingScript = document.querySelector('script[src*="tlk.io"]');
-        console.log('Existing script found:', !!existingScript);
-        
-        if (!existingScript) {
-          console.log('Creating new tlk.io script...');
-          const script = document.createElement('script');
-          script.src = 'https://tlk.io/embed.js';
-          script.async = true;
-          script.onload = () => {
-            console.log('tlk.io script loaded successfully');
-            // Trigger load event after script loads
-            setTimeout(() => {
-              console.log('Auto-triggering load event...');
-              window.dispatchEvent(new Event('load'));
-            }, 100);
-          };
-          script.onerror = () => console.log('tlk.io script failed to load');
-          document.head.appendChild(script);
-          console.log('Script added to head');
-        }
-        
-        // Check if div exists
-        const tlkDiv = document.getElementById('tlkio');
-        console.log('tlkio div found:', !!tlkDiv);
-        if (tlkDiv) {
-          console.log('tlkio div attributes:', {
-            channel: tlkDiv.getAttribute('data-channel'),
-            theme: tlkDiv.getAttribute('data-theme'),
-            nickname: tlkDiv.getAttribute('data-nickname')
-          });
-        } else {
-          // Manually create div if not found
-          console.log('Creating tlkio div manually...');
-          const container = document.querySelector('.w-full');
-          if (container) {
-            container.innerHTML = `<div id="tlkio" data-channel="${chatData.channelId}" data-theme="theme--minimal" data-nickname="${chatData.nickname}" style="width:100%;height:400px;"></div>`;
-            console.log('Manual div created');
-          }
-        }
-        
-        setChatLoading(false);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [chatData]);
-
-  const loadChatSession = async () => {
+    isRequestingRef.current = true;
     try {
       const response = await api.request(`/chat/session/${sessionId}`);
-      
+
       if (response.error) {
         setError(response.error);
       } else {
@@ -102,16 +44,83 @@ export function ChatSession() {
       setError('無法載入聊天會話');
     } finally {
       setLoading(false);
+      isRequestingRef.current = false;
     }
-  };
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      navigate('/');
+      return;
+    }
+
+    // Reset state when sessionId changes to prevent stale data
+    setLoading(true);
+    setError(null);
+    setChatData(null);
+
+    loadChatSession();
+
+    // Cleanup function to handle component unmount or sessionId change
+    return () => {
+      // Clear any pending state updates or side effects
+      // This prevents memory leaks and DOM conflicts
+      setLoading(false);
+      setError(null);
+      setChatData(null);
+    };
+  }, [sessionId, navigate, loadChatSession]);
+
+  // Load tlk.io script when chat data is available
+  useEffect(() => {
+    if (!chatData) return;
+
+    // Wait for DOM to be ready
+    setTimeout(() => {
+      // Check if script is already loaded
+      const existingScript = document.querySelector('script[src*="tlk.io/embed.js"]');
+      
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.src = 'https://tlk.io/embed.js';
+        script.async = true;
+        
+        script.onload = () => {
+          // Trigger tlk.io initialization after script loads
+          setTimeout(() => {
+            window.dispatchEvent(new Event('load'));
+          }, 100);
+        };
+        
+        document.head.appendChild(script);
+      } else {
+        // Script exists, just trigger initialization
+        setTimeout(() => {
+          window.dispatchEvent(new Event('load'));
+        }, 100);
+      }
+    }, 50);
+  }, [chatData]);
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleString('zh-TW');
   };
 
+  // Use oidcSubjectId as key to force component remount when member switches
+  // This prevents nickname cache issues and ensures clean state
+  const componentKey = user?.oidcSubjectId || 'no-user';
+  
+  // Debug logging
+  console.log('ChatSession Debug:', {
+    userOidcSubjectId: user?.oidcSubjectId,
+    userId: user?.id,
+    componentKey,
+    sessionId
+  });
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div key={componentKey} className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">載入聊天室中...</p>
@@ -122,7 +131,7 @@ export function ChatSession() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div key={componentKey} className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
             <h2 className="text-lg font-semibold text-red-800 mb-2">無法載入聊天室</h2>
@@ -144,7 +153,7 @@ export function ChatSession() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div key={componentKey} className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -178,40 +187,20 @@ export function ChatSession() {
 
           {/* Chat Embed */}
           <div className="p-6">
-            {chatLoading ? (
-              <div className="flex items-center justify-center h-96 border border-gray-200 rounded bg-gray-50">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                  <p className="text-gray-600">載入聊天室中...</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div 
-                  dangerouslySetInnerHTML={{ 
-                    __html: chatData.embedHtml.split('<script')[0] // Only use div part, not script
-                  }}
-                  className="w-full"
-                />
-                <div className="mt-2 text-xs text-gray-400">
-                  <p>HTML內容: {chatData.embedHtml.split('<script')[0]}</p>
-                </div>
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-gray-500">
-                    如果聊天室沒有載入，請嘗試重新整理頁面
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    頻道ID: {chatData.channelId}
-                  </p>
-                  <details className="mt-2">
-                    <summary className="text-xs text-gray-400 cursor-pointer">調試信息</summary>
-                    <pre className="text-xs text-gray-400 mt-1 text-left bg-gray-100 p-2 rounded">
-                      {JSON.stringify(chatData, null, 2)}
-                    </pre>
-                  </details>
-                </div>
-              </>
-            )}
+            <div className="mb-2 text-sm text-gray-600">
+              當前用戶: <span className="font-medium text-blue-600">{chatData.nickname}</span>
+            </div>
+            <div 
+              id="tlkio" 
+              data-channel={chatData.channelId} 
+              data-nickname={chatData.nickname}
+              style={{width: '100%', height: '400px'}}
+            ></div>
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-500">
+                如果聊天室沒有載入，請嘗試重新整理頁面
+              </p>
+            </div>
           </div>
         </div>
 

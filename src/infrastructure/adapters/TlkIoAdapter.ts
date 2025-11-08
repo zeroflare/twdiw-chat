@@ -37,17 +37,19 @@ export class TlkIoAdapter {
     return this.sanitizeChannelId(channelId);
   }
 
-  generatePrivateChatChannelId(sessionId: string): string {
+  generatePrivateChatChannelId(sessionId: string, userIdentifier?: string): string {
     // Generate simpler channel ID to avoid tlk.io restrictions
     // Use only alphanumeric characters and make it shorter
     const shortId = sessionId.substring(0, 8).replace(/[^a-z0-9]/g, '');
-    const channelId = `chat${shortId}`.substring(0, 20); // Even shorter
+    const userSuffix = userIdentifier ? `-${userIdentifier.substring(0, 4)}` : '';
+    const channelId = `match-${shortId}${userSuffix}`.substring(0, 20); // Use 'match-' prefix for consistency
     return this.sanitizeChannelId(channelId);
   }
 
   createForumChatInfo(request: ForumChatRequest): ChatChannelInfo {
     const channelId = this.generateForumChannelId(request.forumId);
-    const embedHtml = this.generateEmbedHtml(channelId, request.nickname);
+    // Use iframe embed to avoid cross-origin cookie 403 errors
+    const embedHtml = this.generateIframeEmbed(channelId, request.nickname, request.memberId);
 
     return {
       channelId,
@@ -57,7 +59,8 @@ export class TlkIoAdapter {
   }
 
   createPrivateChatInfo(request: PrivateChatRequest): ChatChannelInfo {
-    const channelId = this.generatePrivateChatChannelId(request.sessionId);
+    const channelId = this.generatePrivateChatChannelId(request.sessionId, request.memberId);
+    // Use correct tlk.io script-based embed with data-nickname
     const embedHtml = this.generateEmbedHtml(channelId, request.nickname);
 
     return {
@@ -67,15 +70,66 @@ export class TlkIoAdapter {
     };
   }
 
+  /**
+   * Generate iframe-based embed HTML with proper cross-origin attributes and DOM loading handling
+   * This method resolves 403 errors by using iframe with correct sandbox and cookie policies
+   * Also fixes getComputedStyle errors by ensuring proper iframe initialization with onload handlers
+   */
+  generateIframeEmbed(channelId: string, nickname: string, userIdentifier?: string): string {
+    // Sanitize inputs to prevent XSS
+    const safeChannelId = this.escapeHtml(channelId);
+    const safeNickname = encodeURIComponent(nickname); // URL encode for query parameter
+    const safeTheme = this.escapeHtml(this.theme);
+
+    // Build tlk.io URL with parameters and user-specific cache-busting
+    const cacheBuster = Date.now();
+    const userHash = userIdentifier ? encodeURIComponent(userIdentifier.substring(0, 8)) : 'anon';
+    const tlkUrl = `${this.baseUrl}/${safeChannelId}?nickname=${safeNickname}&theme=${safeTheme}&_t=${cacheBuster}&_u=${userHash}`;
+    
+    // Debug logging
+    console.log('TlkIo URL Generated:', {
+      channelId: safeChannelId,
+      nickname: safeNickname,
+      userHash,
+      cacheBuster,
+      fullUrl: tlkUrl
+    });
+
+    // Generate unique iframe ID for reliable DOM querying and state management
+    const iframeId = `tlk-iframe-${safeChannelId}`;
+
+    // Generate iframe with:
+    // - Security sandbox (allow-same-origin, allow-scripts, allow-forms, allow-popups)
+    // - DOM loading timing fix (onload handler, loading attribute, container wrapper)
+    // - Unique ID for safe DOM querying
+    // - data-nickname for frontend visibility and verification
+    // Note: 'credentials' is not a valid value for the allow attribute and has been removed
+    return `
+<div class="tlk-iframe-container" data-channel="${safeChannelId}" data-nickname="${this.escapeHtml(nickname)}" data-loading-state="loading">
+  <iframe
+    id="${iframeId}"
+    src="${tlkUrl}"
+    width="100%"
+    height="400"
+    frameborder="0"
+    sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+    loading="lazy"
+    onload="this.parentElement.setAttribute('data-loading-state', 'loaded')"
+    style="border:0;width:100%;height:400px;">
+  </iframe>
+</div>
+    `.trim();
+  }
+
   private generateEmbedHtml(channelId: string, nickname: string): string {
     // Sanitize inputs to prevent XSS
     const safeChannelId = this.escapeHtml(channelId);
     const safeNickname = this.escapeHtml(nickname);
     const safeTheme = this.escapeHtml(this.theme);
-
-    // Generate tlk.io embed HTML
+    
+    // Use correct tlk.io format with id="tlkio" and data-nickname
     return `
-<div id="tlkio" data-channel="${safeChannelId}" data-theme="${safeTheme}" data-nickname="${safeNickname}" style="width:100%;height:400px;"></div>
+<div id="tlkio" data-channel="${safeChannelId}" data-nickname="${safeNickname}" data-theme="${safeTheme}" style="width:100%;height:400px;"></div>
 <script async src="${this.baseUrl}/embed.js" type="text/javascript"></script>
     `.trim();
   }

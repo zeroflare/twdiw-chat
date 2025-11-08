@@ -7,6 +7,7 @@ export interface ApiResponse<T = any> {
 
 export interface Member {
   id: string;
+  oidcSubjectId: string;
   nickname: string;
   status: 'GENERAL' | 'VERIFIED';
   rank?: 'Gold' | 'Silver' | 'Bronze';

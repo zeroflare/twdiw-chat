@@ -158,8 +158,9 @@ app.post('/seed-data', async (c) => {
     for (const user of users) {
       // Check if user already exists
       const existing = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
+      
       if (existing) {
-        results.push({ user: user.nickname, status: 'already exists' });
+        results.push({ user: user.nickname, status: 'already exists', id: existing.getId() });
         continue;
       }
       
@@ -177,7 +178,7 @@ app.post('/seed-data', async (c) => {
       }
       
       await memberRepo.save(member);
-      results.push({ user: user.nickname, status: 'created' });
+      results.push({ user: user.nickname, status: 'created', id: member.getId() });
     }
     
     return c.json({
@@ -188,6 +189,37 @@ app.post('/seed-data', async (c) => {
   } catch (error) {
     console.error('Seed data failed:', error);
     return c.json({ error: 'Failed to seed test data' }, 500);
+  }
+});
+
+// POST /api/dev/vc/complete/:transactionId - Complete mock VC verification
+app.post('/vc/complete/:transactionId', async (c) => {
+  try {
+    const transactionId = c.req.param('transactionId');
+    const { rank = 'Gold' } = await c.req.json();
+    
+    // Update verification session to completed
+    const sessionStore = new (await import('../infrastructure/services/VCVerificationSessionStore')).VCVerificationSessionStore(c.env.DB);
+    
+    await sessionStore.updateSession(transactionId, {
+      status: 'completed',
+      extractedDid: `did:example:${rank.toLowerCase()}-member`,
+      extractedRank: rank,
+      completedAt: Date.now()
+    });
+    
+    return c.json({
+      message: 'Mock VC verification completed',
+      transactionId,
+      status: 'completed',
+      extractedClaims: {
+        did: `did:example:${rank.toLowerCase()}-member`,
+        rank: rank
+      }
+    });
+  } catch (error) {
+    console.error('Mock VC completion failed:', error);
+    return c.json({ error: 'Mock VC completion failed' }, 500);
   }
 });
 

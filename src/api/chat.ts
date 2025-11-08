@@ -96,7 +96,6 @@ app.get('/forum/:forumId', authMiddleware(), async (c) => {
 
     return c.json({
       channelId: chatInfo.channelId,
-      embedHtml: chatInfo.embedHtml,
       nickname: chatInfo.nickname,
       forumInfo: {
         id: forum.getId(),
@@ -128,6 +127,15 @@ app.get('/session/:sessionId', authMiddleware(), async (c) => {
     const encryptionService2 = new EncryptionService(c.env.ENCRYPTION_KEY);
     const memberRepo2 = new D1MemberProfileRepository(c.env.DB, encryptionService2);
     const member = await memberRepo2.findById(user.memberId);
+
+    // Debug logging for development
+    console.log('Chat API Debug:', {
+      userOidcSubjectId: user.oidcSubjectId,
+      userMemberId: user.memberId,
+      memberFound: !!member,
+      memberNickname: member?.getNickname(),
+      memberId: member?.getId()
+    });
 
     if (!member) {
       return c.json({ error: 'Member not found' }, 404);
@@ -163,7 +171,6 @@ app.get('/session/:sessionId', authMiddleware(), async (c) => {
 
     return c.json({
       channelId: chatInfo.channelId,
-      embedHtml: chatInfo.embedHtml,
       nickname: chatInfo.nickname,
       sessionInfo: {
         id: session.getId(),

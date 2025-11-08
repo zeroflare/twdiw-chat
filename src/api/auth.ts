@@ -226,6 +226,7 @@ app.get('/me', authMiddleware(), async (c) => {
 
     return c.json({
       id: member.getId(),
+      oidcSubjectId: user.oidcSubjectId,
       nickname: member.getNickname(),
       status: member.getStatus(),
       rank: member.getDerivedRank(),

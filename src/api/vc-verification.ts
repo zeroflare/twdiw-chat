@@ -57,7 +57,33 @@ app.post('/start', authMiddleware(), async (c) => {
       });
     }
 
-    // Initiate new verification
+    // Development mode: return mock verification
+    const isDev = c.env.DEV_MODE === 'true' || c.env.NODE_ENV === 'development';
+    if (isDev) {
+      const mockTransactionId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const mockResult = {
+        transactionId: mockTransactionId,
+        qrCodeUrl: `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk1vY2sgUVIgQ29kZTwvdGV4dD48L3N2Zz4=`,
+        authUri: `https://mock-wallet.example.com/verify?tx=${mockTransactionId}`,
+        status: 'pending' as const,
+        pollInterval: 2000,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+      };
+
+      // Store mock session
+      await sessionStore.createSession({
+        transactionId: mockResult.transactionId,
+        memberId,
+        status: 'pending',
+        qrCodeUrl: mockResult.qrCodeUrl,
+        authUri: mockResult.authUri,
+        expiresAt: mockResult.expiresAt.getTime()
+      });
+
+      return c.json(mockResult);
+    }
+
+    // Production mode: use real VC verification service
     const vcService = new VCVerificationService(c.env);
     const result = await vcService.initiateVerification({ memberId });
 
@@ -118,7 +144,63 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
       });
     }
 
-    // Poll twdiw API
+    // Development mode: simulate verification completion for mock sessions
+    const isDev = c.env.DEV_MODE === 'true' || c.env.NODE_ENV === 'development';
+    if (isDev && transactionId.startsWith('mock-')) {
+      // Simulate random completion after some time
+      const sessionAge = Date.now() - parseInt(transactionId.split('-')[1]);
+      const shouldComplete = sessionAge > 10000; // Complete after 10 seconds
+      
+      if (shouldComplete) {
+        const mockRanks = ['Gold', 'Silver', 'Bronze'];
+        const randomRank = mockRanks[Math.floor(Math.random() * mockRanks.length)];
+        const mockDid = `did:example:mock-${Math.random().toString(36).substr(2, 9)}`;
+        
+        const result = {
+          transactionId,
+          status: 'completed' as const,
+          verifiableCredential: { mock: true },
+          extractedClaims: {
+            did: mockDid,
+            rank: randomRank
+          }
+        };
+
+        // Update member profile
+        const memberRepo = new D1MemberProfileRepository(c.env.DB, c.env.ENCRYPTION_KEY);
+        const member = await memberRepo.findById(user.memberId);
+        
+        if (member) {
+          member.verifyWithRankCard(mockDid, randomRank as any);
+          await memberRepo.save(member);
+        }
+
+        // Update session
+        await sessionStore.updateSession(transactionId, {
+          status: 'completed',
+          verifiableCredential: result.verifiableCredential,
+          extractedDid: result.extractedClaims.did,
+          extractedRank: result.extractedClaims.rank,
+          completedAt: Date.now()
+        });
+
+        return c.json({
+          transactionId,
+          status: 'completed',
+          extractedClaims: result.extractedClaims,
+          message: 'Mock verification completed successfully'
+        });
+      } else {
+        // Still pending
+        return c.json({
+          transactionId,
+          status: 'pending',
+          pollInterval: 2000
+        });
+      }
+    }
+
+    // Production mode: Poll twdiw API
     const vcService = new VCVerificationService(c.env);
     const result = await vcService.checkVerificationStatus(transactionId);
 

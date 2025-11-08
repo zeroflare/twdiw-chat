@@ -116,10 +116,17 @@ export function optionalAuthMiddleware() {
           const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
           const mockUser = mockAuthService.getMockUser(mockUserId);
           if (mockUser) {
-            c.set('user', {
-              oidcSubjectId: mockUser.oidcSubjectId,
-              memberId: mockUser.id
-            });
+            // Find actual member in database by OIDC subject ID (consistent with handleMockAuth)
+            const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+            const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+            const member = await memberRepo.findByOidcSubjectId(mockUser.oidcSubjectId);
+            
+            if (member) {
+              c.set('user', {
+                oidcSubjectId: mockUser.oidcSubjectId,
+                memberId: member.getId() // Use actual database ID
+              });
+            }
           }
         }
       } else {

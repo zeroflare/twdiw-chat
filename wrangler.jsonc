@@ -3,8 +3,9 @@
 	"compatibility_date": "2025-11-04",
 	"main": "src/index.ts",
 	"vars": {
-		"SANDBOX_BASE_URL": "https://verifier-sandbox.wallet.gov.tw",
-		"SANDBOX_TOKEN": "O1DhqxTYuxLh43UvyMuitH1xufPGlijb"
+		"TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw/api",
+		"TWDIW_API_TOKEN": "O1DhqxTYuxLh43UvyMuitH1xufPGlijb",
+		"TWDIW_REF": "twdiw-chat"
 	},
 	"d1_databases": [
 		{

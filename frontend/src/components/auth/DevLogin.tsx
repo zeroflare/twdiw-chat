@@ -33,10 +33,13 @@ export function DevLogin() {
       
       // Refresh user data
       await refreshUser();
-      alert('Mock login successful!');
+      alert('模擬登入成功！');
+      
+      // Force page reload to clear all cache including iframe
+      window.location.reload();
     } catch (error) {
       console.error('Mock login failed:', error);
-      alert('Mock login failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      alert('模擬登入失敗：' + (error instanceof Error ? error.message : '未知錯誤'));
     } finally {
       setLoading(false);
     }
@@ -49,10 +52,10 @@ export function DevLogin() {
       if (response.error) {
         throw new Error(response.error);
       }
-      alert('Test data seeded successfully!');
+      alert('測試資料建立成功！');
     } catch (error) {
       console.error('Seed data failed:', error);
-      alert('Seed data failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      alert('測試資料建立失敗：' + (error instanceof Error ? error.message : '未知錯誤'));
     } finally {
       setSeeding(false);
     }

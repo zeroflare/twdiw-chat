@@ -77,7 +77,8 @@ export function ForumList() {
                 <strong>暱稱:</strong> ${response.data?.nickname}
               </div>
             </div>
-            ${response.data?.embedHtml}
+            <div id="tlkio" data-channel="${response.data?.channelId}" data-nickname="${response.data?.nickname}" style="width:100%;height:400px;"></div>
+            <script async src="https://tlk.io/embed.js" type="text/javascript"></script>
           </body>
           </html>
         `);
