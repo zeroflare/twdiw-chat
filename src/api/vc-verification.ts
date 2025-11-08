@@ -93,18 +93,16 @@ app.post('/start', authMiddleware(), async (c) => {
       transactionId: result.transactionId,
       memberId,
       status: 'pending',
-      qrCodeUrl: result.qrCodeUrl,
+      qrCodeUrl: result.qrCodeUrl, // Store the base64 image
       authUri: result.authUri,
-      expiresAt: result.expiresAt || Date.now() + 10 * 60 * 1000
+      expiresAt: Date.now() + 10 * 60 * 1000
     });
 
     return c.json({
       transactionId: result.transactionId,
-      qrCodeUrl: result.qrCodeUrl,
+      qrCodeUrl: result.qrCodeUrl, // Now contains the base64 image
       authUri: result.authUri,
-      status: result.status,
-      pollInterval: result.pollInterval || 5000,
-      expiresAt: result.expiresAt
+      status: result.status
     });
 
   } catch (error) {
@@ -124,7 +122,11 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
     const session = await sessionStore.getSession(transactionId);
 
     if (!session) {
-      return c.json({ error: 'Verification session not found' }, 404);
+      return c.json({ 
+        error: 'Verification session not found', 
+        shouldRestart: true,
+        message: 'Session expired. Please restart verification.'
+      }, 404);
     }
 
     // Verify ownership

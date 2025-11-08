@@ -20,7 +20,7 @@ export function VCVerification() {
       }
       
       const result = response.data!;
-      setVerification(result);
+      setVerification(prev => ({ ...result, qrCodeUrl: result.qrCodeUrl || prev?.qrCodeUrl }));
       
       if (result.status === 'completed') {
         stopPolling();

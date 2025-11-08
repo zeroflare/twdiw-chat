@@ -13,9 +13,8 @@ import { Rank } from '../../domain/entities/MemberProfile';
 
 export interface TwdiwQRCodeResponse {
   transactionId: string;
+  qrcodeImage: string;
   authUri: string;
-  qrCodeUrl: string;
-  pollInterval: number;
 }
 
 export interface TwdiwStatusResponse {
@@ -30,9 +29,9 @@ export class VCVerificationService implements RankVerificationService {
   private ref: string;
 
   constructor(env: any) {
-    this.apiEndpoint = env.TWDIW_API_ENDPOINT || 'https://verifier-sandbox.wallet.gov.tw/api';
+    this.apiEndpoint = env.TWDIW_API_ENDPOINT || 'https://verifier-sandbox.wallet.gov.tw';
     this.apiToken = env.TWDIW_API_TOKEN;
-    this.ref = env.TWDIW_REF || 'twdiw-chat';
+    this.ref = env.TWDIW_REF || '0052696330_vc_asset_player_rank_certificate';
 
     if (!this.apiToken) {
       throw new Error('TWDIW_API_TOKEN is required');
@@ -42,10 +41,10 @@ export class VCVerificationService implements RankVerificationService {
   async initiateVerification(request: VerificationRequest): Promise<VerificationResult> {
     try {
       const transactionId = `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const response = await fetch(`${this.apiEndpoint}/api/oidvp/qrcode?ref=${this.ref}&transactionId=${transactionId}`, {
+      const response = await fetch(`${this.apiEndpoint}/api/oidvp/qrcode?ref=${encodeURIComponent(this.ref)}&transactionId=${encodeURIComponent(transactionId)}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.apiToken}`,
+          'Access-Token': this.apiToken,
           'Accept': 'application/json'
         }
       });
@@ -59,11 +58,9 @@ export class VCVerificationService implements RankVerificationService {
 
       return {
         transactionId: data.transactionId,
-        qrCodeUrl: data.qrCodeUrl,
-        authUri: data.authUri,
         status: VerificationStatus.PENDING,
-        pollInterval: data.pollInterval || 5000,
-        expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes (timestamp)
+        authUri: data.authUri,
+        qrCodeUrl: data.qrcodeImage // Map qrcodeImage to qrCodeUrl
       };
     } catch (error) {
       console.error('VC verification initiation failed:', error);
@@ -73,13 +70,23 @@ export class VCVerificationService implements RankVerificationService {
 
   async checkVerificationStatus(transactionId: string): Promise<VerificationResult> {
     try {
-      const response = await fetch(`${this.apiEndpoint}/oidvp/status/${transactionId}`, {
-        method: 'GET',
+      const response = await fetch(`${this.apiEndpoint}/api/oidvp/result`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiToken}`,
-          'Accept': 'application/json'
-        }
+          'Access-Token': this.apiToken,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ transactionId })
       });
+
+      if (response.status === 400) {
+        // 400 means user hasn't uploaded data yet (still pending)
+        return {
+          transactionId,
+          status: VerificationStatus.PENDING
+        };
+      }
 
       if (!response.ok) {
         const error = await response.text();

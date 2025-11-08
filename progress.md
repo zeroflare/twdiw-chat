@@ -1,5 +1,36 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09 - Taiwan Wallet Verifier Service Implementation)
+## Current Session - COMPLETED (2025-11-09 - QR Code Display Persistence Fix)
+- **Start Time**: 2025-11-09T04:54:00+08:00
+- **Target**: Fix QR code disappearing issue in VC verification frontend
+- **Phase**: Manual Fix - COMPLETED
+- **Gate**: Low
+- **Method**: Minimal state management fix
+
+## Phase Results - Current Session (2025-11-09 - QR Code Display Fix)
+- **Summary**: Fixed QR code disappearing issue by preserving qrCodeUrl during polling state updates
+- **Root Cause**: Polling callback was overwriting entire verification state, losing qrCodeUrl if not included in response
+- **User Experience Issue**:
+  - QR code appeared briefly then disappeared during verification polling
+  - Users couldn't complete verification flow due to missing QR code
+- **Method**: Manual state preservation fix
+  - **Analysis**: setVerification(result) overwrote entire state object
+  - **Issue**: Polling responses may not include qrCodeUrl field
+  - **Fix**: Preserve qrCodeUrl from previous state when updating verification status
+- **ChangedPaths**:
+  - frontend/src/components/vc/VCVerification.tsx (modified):
+    * Line 22: Changed setVerification(result) to preserve qrCodeUrl
+    * Added state merging: setVerification(prev => ({ ...result, qrCodeUrl: result.qrCodeUrl || prev?.qrCodeUrl }))
+    * QR code now persists throughout verification polling cycle
+- **AcceptanceCheck**: yes - QR code now:
+  - Displays consistently without disappearing
+  - Persists throughout verification polling process
+  - Only clears when verification is reset or completed
+  - Maintains existing verification flow functionality
+- **RollbackPlan**:
+  1. Revert frontend/src/components/vc/VCVerification.tsx line 22:
+     - Change back to: setVerification(result);
+     - Remove state merging logic
+
 - **Start Time**: 2025-11-09T17:30:00+08:00
 - **Target**: Create TaiwanWalletVerifierService adapter for Taiwan government wallet verifier API
 - **Phase**: Service Implementation - COMPLETED

@@ -71,6 +71,7 @@ export interface VerificationResult {
   transactionId: string;
   status: VerificationStatus;
   authUri?: string;
+  qrCodeUrl?: string;
   claims?: RankCardClaim;
   errorMessage?: string;
 }
