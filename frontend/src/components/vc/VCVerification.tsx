@@ -127,19 +127,44 @@ export function VCVerification() {
       
       {/* Always show QR code if available */}
       {qrCodeUrl && (
-        <div className="mb-4 text-center bg-yellow-100 p-4 border-2 border-yellow-500">
-          <p className="text-sm text-gray-600 mb-2 font-bold">QR CODE FOUND - 請使用錢包 APP 掃描：</p>
-          <div className="flex justify-center">
+        <div style={{
+          marginBottom: '16px', 
+          textAlign: 'center', 
+          backgroundColor: '#fef3c7', 
+          padding: '16px', 
+          border: '2px solid #f59e0b',
+          borderRadius: '8px',
+          position: 'fixed',
+          top: '50px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          width: '400px'
+        }}>
+          <p style={{fontSize: '14px', color: '#374151', marginBottom: '8px', fontWeight: 'bold'}}>
+            QR CODE FOUND - 請使用錢包 APP 掃描：
+          </p>
+          <div style={{display: 'flex', justifyContent: 'center'}}>
             <img 
               src={qrCodeUrl} 
               alt="VC Verification QR Code"
-              className="w-48 h-48 border-4 border-red-500 rounded-lg bg-white"
-              style={{display: 'block !important', visibility: 'visible !important', opacity: '1 !important', minHeight: '192px', minWidth: '192px'}}
+              style={{
+                width: '192px', 
+                height: '192px', 
+                border: '4px solid #ef4444', 
+                borderRadius: '8px', 
+                backgroundColor: 'white',
+                display: 'block',
+                visibility: 'visible',
+                opacity: '1'
+              }}
               onLoad={() => console.log('QR code image loaded successfully')}
               onError={() => console.log('QR code image failed to load')}
             />
           </div>
-          <p className="text-xs text-red-600 mt-2">DEBUG: qrCodeUrl = {qrCodeUrl}</p>
+          <p style={{fontSize: '12px', color: '#dc2626', marginTop: '8px'}}>
+            DEBUG: qrCodeUrl = {qrCodeUrl}
+          </p>
         </div>
       )}
       
