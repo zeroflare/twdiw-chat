@@ -65,7 +65,6 @@ class ApiService {
       }
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        credentials: 'include',
         headers,
         ...options,
       });

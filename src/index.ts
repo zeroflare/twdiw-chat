@@ -27,7 +27,8 @@ app.use('*', cors({
     'https://twdiw-chat-app.pages.dev',
     /^https:\/\/.*\.twdiw-chat-app\.pages\.dev$/
   ],
-  credentials: true,
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
 
 // API health check endpoint (moved to /api to avoid conflict with frontend)

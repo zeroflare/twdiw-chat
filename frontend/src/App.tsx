@@ -44,6 +44,7 @@ function AppContent() {
       if (token) {
         localStorage.setItem('auth_token', token);
         console.log('Token stored in localStorage');
+        console.log('Token value:', token.substring(0, 50) + '...');
       }
 
       // Ensure token storage completes before refreshing user

@@ -5,7 +5,6 @@
  */
 
 import { Context, Next } from 'hono';
-import { getCookie } from 'hono/cookie';
 import { JWTService, JWTPayload } from '../infrastructure/auth/JWTService';
 import { MockAuthService } from '../infrastructure/auth/MockAuthService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
@@ -35,8 +34,8 @@ export function authMiddleware() {
 
 async function handleMockAuth(c: Context, next: Next) {
   try {
-    // Check for mock user ID in header or cookie
-    const mockUserId = c.req.header('X-Mock-User-Id') || getCookie(c, 'mock-user-id') || 'user-2'; // Default to LIFE_WINNER_S user
+    // Check for mock user ID in header only
+    const mockUserId = c.req.header('X-Mock-User-Id') || 'user-2'; // Default to LIFE_WINNER_S user
     
     const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
     const mockUser = mockAuthService.getMockUser(mockUserId);
@@ -72,16 +71,13 @@ async function handleJWTAuth(c: Context, next: Next) {
   const jwtService = new JWTService(c.env.JWT_SECRET);
   
   try {
-    // Extract token from Authorization header or cookie
+    // Extract token from Authorization header only
     const authHeader = c.req.header('Authorization');
-    const cookieToken = getCookie(c, 'session');
     
     let token: string | undefined;
     
     if (authHeader?.startsWith('Bearer ')) {
       token = authHeader.substring(7);
-    } else if (cookieToken) {
-      token = cookieToken;
     }
 
     if (!token) {
@@ -118,7 +114,7 @@ export function optionalAuthMiddleware() {
     try {
       if (isDev && useMockAuth) {
         // Development mode: use mock authentication
-        const mockUserId = c.req.header('X-Mock-User-Id') || getCookie(c, 'mock-user-id');
+        const mockUserId = c.req.header('X-Mock-User-Id');
         if (mockUserId) {
           const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
           const mockUser = mockAuthService.getMockUser(mockUserId);
@@ -141,14 +137,11 @@ export function optionalAuthMiddleware() {
         // Production mode: use real JWT authentication
         const jwtService = new JWTService(c.env.JWT_SECRET);
         const authHeader = c.req.header('Authorization');
-        const cookieToken = getCookie(c, 'session');
         
         let token: string | undefined;
         
         if (authHeader?.startsWith('Bearer ')) {
           token = authHeader.substring(7);
-        } else if (cookieToken) {
-          token = cookieToken;
         }
 
         if (token) {

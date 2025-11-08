@@ -4,7 +4,6 @@
  */
 
 import { Hono } from 'hono';
-import { setCookie, deleteCookie, getCookie } from 'hono/cookie';
 import { OIDCService } from '../infrastructure/auth/OIDCService';
 import { JWTService } from '../infrastructure/auth/JWTService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
@@ -260,18 +259,9 @@ app.get('/callback', async (c) => {
     console.log('Creating session token...');
     const sessionToken = await oidcService.createSessionToken(subjectId, member.getId());
 
-    // Set secure session cookie
-    setCookie(c, 'session', sessionToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'None', // Allow cross-domain for frontend/backend separation
-      maxAge: 3600, // 1 hour
-      path: '/'
-    });
-
     console.log('Login successful for user:', subjectId);
 
-    // Return JWT token to frontend instead of setting cookie
+    // Return JWT token to frontend via URL redirect
     const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
     return c.redirect(`${frontendUrl}/?auth=success&token=${sessionToken}`);
 

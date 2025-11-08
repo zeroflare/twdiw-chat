@@ -1,10 +1,10 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09 - Database Design Consistency Fix)
-- **Start Time**: 2025-11-09T03:20:16+08:00
-- **Target**: 統一新用戶資料設計，使用 NULL 值而非預設值
-- **Phase**: Database Design Fix - COMPLETED
+## Current Session - COMPLETED (2025-11-09 - Remove Cookie Authentication)
+- **Start Time**: 2025-11-09T03:26:45+08:00
+- **Target**: 全面移除 cookie 認證，統一使用 Authorization header
+- **Phase**: Authentication Simplification - COMPLETED
 - **Gate**: Low
-- **Method**: 修改後端建立邏輯和前端檢查邏輯，統一使用 NULL 設計
+- **Method**: 移除所有 cookie 相關邏輯，統一認證架構
 
 ## Phase Results - Current Session (2025-11-09 - Token Storage Timing Fix)
 - **Summary**: Fixed race condition where refreshUser() could be called before localStorage token is fully stored
