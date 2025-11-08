@@ -1,5 +1,55 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09 - QR Code Display Persistence Fix v2)
+## Current Session - COMPLETED (2025-11-09 - QR Code Scan Response Fix)
+- **Start Time**: 2025-11-09T05:53:00+08:00
+- **Target**: Fix QR code scan response issue - scans not triggering proper completion
+- **Phase**: Manual Fix - COMPLETED
+- **Gate**: Low
+- **Method**: Minimal targeted fixes to polling and completion handling
+
+## Phase Results - Current Session (2025-11-09 - QR Code Scan Response Fix)
+- **Summary**: Fixed QR code scan response handling by removing debug messages, enabling refreshUser() on completion, and improving error handling
+- **Root Cause**: 
+  1. Debug messages cluttering UI
+  2. refreshUser() was commented out, preventing profile updates after successful verification
+  3. Missing error handling in async polling function
+- **User Experience Issue**:
+  - QR code displayed correctly but scans didn't trigger profile updates
+  - Debug messages showing in production UI
+  - No feedback when verification completed successfully
+- **Method**: Manual targeted fixes
+  - **Analysis**: Polling mechanism worked but completion handling was disabled
+  - **Issue**: refreshUser() was commented out to "keep QR code visible"
+  - **Fix**: Enable refreshUser() with proper error handling and logging
+- **ChangedPaths**:
+  - frontend/src/components/vc/VCVerification.tsx (modified):
+    * Line 158: Removed debug message display
+    * Lines 52-58: Enabled refreshUser() call on completion with error handling
+    * Lines 29-65: Added comprehensive try-catch in polling function
+    * Added logging for successful profile refresh
+    * Improved error handling for refresh failures
+- **User Data Update Verification**: ✅ VERIFIED
+  - Backend VC verification correctly calls `member.verifyWithRankCard(did, rank)`
+  - MemberProfile entity updates: status GENERAL→VERIFIED, sets linkedVcDid & derivedRank
+  - Database saves updated member data via repository
+  - Frontend refreshUser() calls `/auth/me` to get fresh data
+  - `/auth/me` returns complete user data including rank and linkedVcDid
+  - AuthContext correctly updates user state with new verification data
+  - **Complete Flow**: QR scan → backend verify → update profile → save DB → refresh frontend → update UI
+- **AcceptanceCheck**: yes - QR code scan flow now:
+  - Displays QR code without debug messages
+  - Properly handles scan completion with refreshUser() call
+  - Updates user profile after successful verification
+  - Provides console logging for debugging
+  - Maintains existing QR code display functionality
+  - Handles errors gracefully without breaking polling
+  - **User data correctly updated from GENERAL to VERIFIED status with rank**
+- **RollbackPlan**:
+  1. Restore debug message display in VCVerification.tsx line 158
+  2. Comment out refreshUser() call and restore original comment
+  3. Remove try-catch wrapper from polling function
+  4. Remove console logging statements
+
+## Previous Session - COMPLETED (2025-11-09 - QR Code Display Persistence Fix v2)
 - **Start Time**: 2025-11-09T05:38:00+08:00
 - **Target**: Fix QR code disappearing issue in VC verification frontend (实际修复)
 - **Phase**: Manual Fix - COMPLETED

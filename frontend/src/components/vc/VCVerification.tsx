@@ -30,36 +30,46 @@ export function VCVerification() {
     async () => {
       if (!verification?.transactionId) return null;
       
-      const response = await api.pollVCVerification(verification.transactionId);
-      if (response.error) {
-        throw new Error(response.error);
+      try {
+        const response = await api.pollVCVerification(verification.transactionId);
+        if (response.error) {
+          throw new Error(response.error);
+        }
+        
+        const result = response.data!;
+        setVerification(prev => ({ 
+          ...result, 
+          qrCodeUrl: result.qrCodeUrl || prev?.qrCodeUrl 
+        }));
+        
+        // Preserve qrCodeUrl in separate state - use merged qrCodeUrl from verification state
+        const mergedQrCodeUrl = result.qrCodeUrl || verification?.qrCodeUrl;
+        if (mergedQrCodeUrl && !qrCodeUrl) {
+          console.log('Setting qrCodeUrl from merged state:', mergedQrCodeUrl);
+          setQrCodeUrl(mergedQrCodeUrl);
+          localStorage.setItem('vcVerification_qrCodeUrl', mergedQrCodeUrl);
+        }
+        
+        if (result.status === 'completed') {
+          stopPolling();
+          setError(null);
+          // Call refreshUser to update user profile with new verification
+          try {
+            await refreshUser();
+            console.log('User profile refreshed after VC verification completion');
+          } catch (err) {
+            console.error('Failed to refresh user after VC verification:', err);
+          }
+        } else if (result.status === 'failed' || result.status === 'expired') {
+          stopPolling();
+          setError(result.error || '驗證失敗');
+        }
+        
+        return result;
+      } catch (err) {
+        console.error('Polling error:', err);
+        throw err;
       }
-      
-      const result = response.data!;
-      setVerification(prev => ({ 
-        ...result, 
-        qrCodeUrl: result.qrCodeUrl || prev?.qrCodeUrl 
-      }));
-      
-      // Preserve qrCodeUrl in separate state - use merged qrCodeUrl from verification state
-      const mergedQrCodeUrl = result.qrCodeUrl || verification?.qrCodeUrl;
-      if (mergedQrCodeUrl && !qrCodeUrl) {
-        console.log('Setting qrCodeUrl from merged state:', mergedQrCodeUrl);
-        setQrCodeUrl(mergedQrCodeUrl);
-        localStorage.setItem('vcVerification_qrCodeUrl', mergedQrCodeUrl);
-      }
-      
-      if (result.status === 'completed') {
-        stopPolling();
-        // Don't call refreshUser immediately to keep QR code visible
-        // await refreshUser();
-        setError(null);
-      } else if (result.status === 'failed' || result.status === 'expired') {
-        stopPolling();
-        setError(result.error || '驗證失敗');
-      }
-      
-      return result;
     },
     {
       interval: verification?.pollInterval || 5000,
@@ -153,10 +163,6 @@ export function VCVerification() {
         </div>
       ) : (
         <div>
-          {/* Debug info */}
-          <div className="mb-2 p-2 bg-gray-100 text-xs">
-            Debug: qrCodeUrl = {verification.qrCodeUrl ? 'EXISTS' : 'NULL'} | Status = {verification.status}
-          </div>
           
           {qrCodeUrl && (
             <div className="mb-4 text-center" style={{position: 'relative', zIndex: 1000}}>
