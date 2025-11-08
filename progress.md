@@ -1,5 +1,91 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09 - JWT UTF-8 Character Encoding Fix)
+## Current Session - COMPLETED (2025-11-09 - Frontend OIDC Callback Route Handling)
+- **Start Time**: 2025-11-09
+- **Target**: Add OIDC callback route handling in frontend to properly handle SSO login redirect
+- **Phase**: Phase 3: SSCI-Lite - COMPLETED
+- **Gate**: Low
+- **Method**: Test-Driven Development (TDD)
+
+## Phase 3 Results - Current Session (2025-11-09 - Frontend OIDC Callback Route)
+- **Summary**: Implemented dedicated /api/auth/callback route in frontend to handle OIDC SSO redirect, refresh auth state, and redirect to dashboard
+- **Root Cause**: After successful OIDC login, user is redirected to /api/auth/callback. Backend returns JSON response but frontend had no dedicated route handler. This caused poor UX where users would see JSON in browser instead of being properly logged in and redirected to the dashboard. Previous workaround in useAuth.tsx detected ?code= param but didn't provide proper loading UX.
+- **User Experience Issue**:
+  - User clicks "登入" → Redirected to SSO provider
+  - After SSO login → Backend processes callback at /api/auth/callback
+  - Backend returns JSON: {"success": true}
+  - Frontend shows raw JSON instead of dashboard
+  - User doesn't know they're logged in and must manually navigate to /
+- **Method**: Test-Driven Development (TDD) approach
+  - RED phase: Created comprehensive test suite with 6 test cases
+    * Test 1: Verify route exists for /api/auth/callback
+    * Test 2: Verify refreshUser() is called when landing on callback route
+    * Test 3: Verify redirect to dashboard (/) after callback processing
+    * Test 4: Verify loading state is shown while processing callback
+    * Test 5: Verify authenticated user content after successful callback
+    * Test 6: Verify graceful handling when callback has no code parameter
+  - GREEN phase: Implemented OIDCCallback component in App.tsx
+    * Created dedicated OIDCCallback component (lines 159-191)
+    * Added route mapping for /api/auth/callback → OIDCCallback component
+    * Component shows loading indicator with "處理登入回應中..." message
+    * Calls refreshUser() to fetch updated authentication state from backend
+    * Redirects to dashboard (/) with replace: true to prevent back button issues
+    * Handles errors gracefully (logs error but still redirects)
+    * Added imports: useEffect, useState, useNavigate, useLocation
+  - REFACTOR phase: Clean implementation with proper error handling
+    * Comprehensive JSDoc documentation explaining callback flow
+    * Proper async/await error handling with try-catch-finally
+    * Loading state management (isProcessing)
+    * Redirect regardless of success/failure (dashboard will show login if auth failed)
+    * Uses navigate('/', { replace: true }) to prevent callback URL in history
+- **ChangedPaths**:
+  - frontend/src/App.tsx (modified):
+    * Added imports: useEffect, useState from 'react' (line 1)
+    * Added imports: useNavigate, useLocation from 'react-router-dom' (line 2)
+    * Created OIDCCallback component (lines 159-191):
+      - Shows loading spinner with "處理登入回應中..." message
+      - Calls refreshUser() on mount via useEffect
+      - Redirects to dashboard (/) after processing
+      - Error handling with console.error and graceful redirect
+      - Comprehensive JSDoc explaining the callback flow
+    * Added route for /api/auth/callback (line 199):
+      - Route path: "/api/auth/callback"
+      - Element: <OIDCCallback />
+      - Positioned between "/" and "/chat/session/:sessionId" routes
+  - frontend/src/__tests__/App.oidc-callback.test.tsx (created):
+    * 6 comprehensive test cases validating callback route handling
+    * Test suite: "App.tsx - OIDC Callback Route Handling"
+    * Route detection and registration tests
+    * refreshUser() call verification tests
+    * Dashboard redirect verification tests
+    * Loading state verification tests
+    * Authenticated user flow tests
+    * Edge case handling tests (missing code parameter)
+    * Mocks for all dependencies (useAuth, components, api)
+  - progress.md (this file - updated with current session results)
+- **AcceptanceCheck**: yes - Frontend now provides:
+  - Dedicated route handler for /api/auth/callback
+  - Proper loading UX with "處理登入回應中..." message during callback processing
+  - Automatic auth state refresh via refreshUser() call
+  - Automatic redirect to dashboard after callback processing
+  - No raw JSON shown to user (better UX)
+  - Error handling with graceful degradation
+  - Prevents callback URL in browser history (replace: true)
+  - Works with or without code parameter in URL
+  - Comprehensive test coverage (6 test cases)
+  - Follows React best practices (useEffect, useState, useNavigate)
+  - Replaces workaround in useAuth.tsx with proper route-based solution
+- **RollbackPlan**:
+  1. Revert frontend/src/App.tsx:
+     - Remove useEffect, useState from imports (line 1)
+     - Remove useNavigate, useLocation from imports (line 2)
+     - Delete OIDCCallback component (lines 147-191)
+     - Remove /api/auth/callback route from Routes (line 199)
+     - Restore original import statement (only React imported)
+     - Restore original route list (only "/" and "/chat/session/:sessionId")
+  2. Delete frontend/src/__tests__/App.oidc-callback.test.tsx
+  3. Revert progress.md to previous version
+
+## Previous Session - COMPLETED (2025-11-09 - JWT UTF-8 Character Encoding Fix)
 - **Start Time**: 2025-11-09
 - **Target**: Fix UTF-8 character encoding issue in JWT payload parsing (OIDCService)
 - **Phase**: Phase 3: SSCI-Lite - COMPLETED

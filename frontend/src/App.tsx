@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { LoginButton } from './components/auth/LoginButton';
 import { UserProfile } from './components/auth/UserProfile';
@@ -144,12 +144,59 @@ function AppContent() {
   );
 }
 
+/**
+ * OIDC Callback Handler Component
+ *
+ * Handles the return from SSO provider after successful authentication.
+ * When user is redirected back to /api/auth/callback:
+ * 1. Shows a loading indicator
+ * 2. Calls refreshUser() to fetch updated authentication state
+ * 3. Redirects to main dashboard (/)
+ *
+ * This solves the issue where backend returns JSON but frontend
+ * needs to update auth state and show the main UI.
+ */
+function OIDCCallback() {
+  const { refreshUser } = useAuth();
+  const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState(true);
+
+  useEffect(() => {
+    const handleCallback = async () => {
+      try {
+        setIsProcessing(true);
+        // Refresh user state to get updated authentication info
+        await refreshUser();
+      } catch (error) {
+        console.error('Failed to refresh user after OIDC callback:', error);
+      } finally {
+        setIsProcessing(false);
+        // Redirect to main dashboard regardless of success/failure
+        // If auth failed, user will see login page; if succeeded, they'll see their dashboard
+        navigate('/', { replace: true });
+      }
+    };
+
+    handleCallback();
+  }, [refreshUser, navigate]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+        <p className="text-gray-600">處理登入回應中...</p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
           <Route path="/" element={<AppContent />} />
+          <Route path="/api/auth/callback" element={<OIDCCallback />} />
           <Route path="/chat/session/:sessionId" element={<ChatSession />} />
         </Routes>
       </AuthProvider>
