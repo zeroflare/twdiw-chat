@@ -52,10 +52,7 @@
       "database_id": "74cb2311-af44-4491-bf55-3c5dc2d22d55",
       "migrations_dir": "migrations"
     }
-  ],
-  
-  // Pages configuration for frontend deployment
-  "pages_build_output_dir": "frontend/dist"
+  ]
   
   // D1 Migrations Configuration
   // Migrations are stored in ./migrations directory

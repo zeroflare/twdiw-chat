@@ -22,7 +22,11 @@ const app = new Hono();
 
 // CORS middleware
 app.use('*', cors({
-  origin: ['http://localhost:3000', 'https://twdiw-chat.pages.dev'],
+  origin: [
+    'http://localhost:3000', 
+    'https://twdiw-chat.pages.dev',
+    'https://e3e365db.twdiw-chat-frontend.pages.dev'
+  ],
   credentials: true,
 }));
 
