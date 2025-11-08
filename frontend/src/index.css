@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow p-6;
+  }
+  
+  .badge {
+    @apply inline-flex px-2 py-1 text-xs font-semibold rounded-full;
+  }
+  
+  .badge-gold {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  
+  .badge-silver {
+    @apply bg-gray-100 text-gray-800;
+  }
+  
+  .badge-bronze {
+    @apply bg-orange-100 text-orange-800;
+  }
+  
+  .badge-verified {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .badge-general {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+}
