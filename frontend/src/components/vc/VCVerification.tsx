@@ -14,6 +14,14 @@ export function VCVerification() {
 
   useEffect(() => {
     console.log('VCVerification useEffect - component mounted/updated');
+    
+    // Restore qrCodeUrl from localStorage on mount
+    const savedQrCodeUrl = localStorage.getItem('vcVerification_qrCodeUrl');
+    if (savedQrCodeUrl && !qrCodeUrl) {
+      console.log('Restoring qrCodeUrl from localStorage:', savedQrCodeUrl);
+      setQrCodeUrl(savedQrCodeUrl);
+    }
+    
     return () => {
       console.log('VCVerification useEffect cleanup - component unmounting');
     };
@@ -38,6 +46,7 @@ export function VCVerification() {
       if (result.qrCodeUrl && !qrCodeUrl) {
         console.log('Setting qrCodeUrl from polling:', result.qrCodeUrl);
         setQrCodeUrl(result.qrCodeUrl);
+        localStorage.setItem('vcVerification_qrCodeUrl', result.qrCodeUrl);
       }
       
       if (result.status === 'completed') {
@@ -77,6 +86,7 @@ export function VCVerification() {
       if (response.data!.qrCodeUrl) {
         console.log('Setting qrCodeUrl from startVerification:', response.data!.qrCodeUrl);
         setQrCodeUrl(response.data!.qrCodeUrl);
+        localStorage.setItem('vcVerification_qrCodeUrl', response.data!.qrCodeUrl);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '啟動驗證失敗');
@@ -89,6 +99,7 @@ export function VCVerification() {
     console.log('resetVerification called - clearing qrCodeUrl');
     setVerification(null);
     setQrCodeUrl(null);
+    localStorage.removeItem('vcVerification_qrCodeUrl');
     setError(null);
     stopPolling();
   };
