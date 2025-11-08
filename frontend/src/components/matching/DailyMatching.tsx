@@ -16,7 +16,7 @@ export function DailyMatching() {
     checkMatchStatus();
     
     // Start polling when waiting for match
-    let pollInterval: NodeJS.Timeout | null = null;
+    let pollInterval: number | null = null;
     
     if (matchStatus === 'waiting') {
       pollInterval = setInterval(checkMatchStatus, 3000); // Poll every 3 seconds

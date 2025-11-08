@@ -15,12 +15,21 @@
     "crons": ["*/5 * * * *"] // Every 5 minutes for session cleanup
   },
   
+  // Observability configuration
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
+  
   // Environment variables for the Worker
   "vars": {
     "TWDIW_API_URL": "https://verifier-sandbox.wallet.gov.tw",
-    "TWDIW_API_TOKEN": "O1DhqxTYuxLh43UvyMuitH1xufPGlijb",
     "OIDC_ISSUER_URL": "https://twdiw-sso.zeroflare.tw",
-    "OIDC_REDIRECT_URI": "https://twdiw-chat.workers.dev/api/auth/callback",
+    "OIDC_REDIRECT_URI": "https://twdiw-chat.csw30454.workers.dev/api/auth/callback",
     "TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw/api",
     "TWDIW_REF": "twdiw-chat",
     "TLKIO_BASE_URL": "https://tlk.io",
@@ -28,6 +37,7 @@
   },
   
   // Secrets (set with: wrangler secret put <NAME>)
+  // "TWDIW_API_TOKEN": "O1DhqxTYuxLh43UvyMuitH1xufPGlijb",
   // "OIDC_CLIENT_ID": "bfc9e841-9845-4bc6-96e8-6f1cde6c2cb8",
   // "OIDC_CLIENT_SECRET": "0498ae88-2f81-4ea5-9123-20eff5185d8c",
   // "JWT_SECRET": "your-jwt-secret",
@@ -42,7 +52,10 @@
       "database_id": "74cb2311-af44-4491-bf55-3c5dc2d22d55",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  
+  // Pages configuration for frontend deployment
+  "pages_build_output_dir": "frontend/dist"
   
   // D1 Migrations Configuration
   // Migrations are stored in ./migrations directory
