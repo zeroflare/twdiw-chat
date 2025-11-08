@@ -4,6 +4,7 @@ import { usePolling } from '../../hooks/usePolling';
 import { api, VerificationResult } from '../../services/api';
 
 export function VCVerification() {
+  console.log('VCVerification component mounted');
   const { user, refreshUser } = useAuth();
   const [verification, setVerification] = useState<VerificationResult | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export function VCVerification() {
   );
 
   const startVerification = async () => {
+    console.log('startVerification button clicked');
     setLoading(true);
     setError(null);
     
@@ -85,10 +87,12 @@ export function VCVerification() {
   };
 
   if (!user) {
+    console.log('VCVerification: no user, returning null');
     return null;
   }
 
   if (user.status === 'VERIFIED') {
+    console.log('VCVerification: user already verified, showing success message');
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <div className="flex items-center">
@@ -135,13 +139,14 @@ export function VCVerification() {
           </div>
           
           {qrCodeUrl && (
-            <div className="mb-4 text-center">
+            <div className="mb-4 text-center" style={{position: 'relative', zIndex: 1000}}>
               <p className="text-sm text-gray-600 mb-2">請使用錢包 APP 掃描 QR 碼：</p>
               <div className="flex justify-center">
                 <img 
                   src={qrCodeUrl} 
                   alt="VC Verification QR Code"
                   className="w-48 h-48 border rounded-lg"
+                  style={{display: 'block !important', visibility: 'visible !important', opacity: '1 !important'}}
                 />
               </div>
             </div>
