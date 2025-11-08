@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { usePolling } from '../../hooks/usePolling';
 import { api, VerificationResult } from '../../services/api';
@@ -11,6 +11,13 @@ export function VCVerification() {
   
   // Debug QR code state
   console.log('VCVerification render - qrCodeUrl:', qrCodeUrl, 'verification:', verification?.status);
+
+  useEffect(() => {
+    console.log('VCVerification useEffect - component mounted/updated');
+    return () => {
+      console.log('VCVerification useEffect cleanup - component unmounting');
+    };
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,6 +124,24 @@ export function VCVerification() {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-4">階級卡驗證</h2>
+      
+      {/* Always show QR code if available */}
+      {qrCodeUrl && (
+        <div className="mb-4 text-center bg-yellow-100 p-4 border-2 border-yellow-500">
+          <p className="text-sm text-gray-600 mb-2 font-bold">QR CODE FOUND - 請使用錢包 APP 掃描：</p>
+          <div className="flex justify-center">
+            <img 
+              src={qrCodeUrl} 
+              alt="VC Verification QR Code"
+              className="w-48 h-48 border-4 border-red-500 rounded-lg bg-white"
+              style={{display: 'block !important', visibility: 'visible !important', opacity: '1 !important', minHeight: '192px', minWidth: '192px'}}
+              onLoad={() => console.log('QR code image loaded successfully')}
+              onError={() => console.log('QR code image failed to load')}
+            />
+          </div>
+          <p className="text-xs text-red-600 mt-2">DEBUG: qrCodeUrl = {qrCodeUrl}</p>
+        </div>
+      )}
       
       {!verification ? (
         <div>
