@@ -9,6 +9,7 @@ import { OIDCService } from '../infrastructure/auth/OIDCService';
 import { JWTService } from '../infrastructure/auth/JWTService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
 import { EncryptionService } from '../infrastructure/security/EncryptionService';
+import { CookieSigningService } from '../infrastructure/security/CookieSigningService';
 import { MemberProfile } from '../domain/entities/MemberProfile';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 
@@ -48,11 +49,16 @@ app.get('/login', async (c) => {
     const oidcService = new OIDCService(c.env);
     const authRequest = await oidcService.createAuthorizationRequest();
 
-    // Store PKCE verifier and state in secure cookie (short-lived)
-    setCookie(c, 'oidc_state', JSON.stringify({
+    // Sign OIDC state cookie for integrity protection
+    const cookieSigner = new CookieSigningService(c.env.COOKIE_SIGNING_KEY);
+    const cookieValue = JSON.stringify({
       state: authRequest.state,
       codeVerifier: authRequest.codeVerifier
-    }), {
+    });
+    const signedValue = await cookieSigner.sign(cookieValue);
+
+    // Store signed PKCE verifier and state in secure cookie (short-lived)
+    setCookie(c, 'oidc_state', signedValue, {
       httpOnly: true,
       secure: true,
       sameSite: 'Lax',
@@ -91,14 +97,23 @@ app.get('/callback', async (c) => {
     // Retrieve stored PKCE data
     const storedData = getCookie(c, 'oidc_state');
     console.log('Stored OIDC data:', { hasStoredData: !!storedData });
-    
+
     if (!storedData) {
       return c.json({ error: 'Missing OIDC state data' }, 400);
     }
 
+    // Verify HMAC signature for integrity protection
+    const cookieSigner = new CookieSigningService(c.env.COOKIE_SIGNING_KEY);
+    const verifyResult = await cookieSigner.verify(storedData);
+
+    if (!verifyResult.valid || !verifyResult.value) {
+      console.error('OIDC state signature verification failed');
+      return c.json({ error: 'Invalid OIDC state signature' }, 400);
+    }
+
     let parsedData;
     try {
-      parsedData = JSON.parse(storedData);
+      parsedData = JSON.parse(verifyResult.value);
     } catch (parseError) {
       console.error('Failed to parse OIDC state:', parseError);
       return c.json({ error: 'Invalid OIDC state data' }, 400);
