@@ -8,7 +8,6 @@ import { OIDCService } from '../infrastructure/auth/OIDCService';
 import { JWTService } from '../infrastructure/auth/JWTService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
 import { EncryptionService } from '../infrastructure/security/EncryptionService';
-import { CookieSigningService } from '../infrastructure/security/CookieSigningService';
 import { MemberProfile } from '../domain/entities/MemberProfile';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 
@@ -48,46 +47,20 @@ app.get('/login', async (c) => {
     const oidcService = new OIDCService(c.env);
     const authRequest = await oidcService.createAuthorizationRequest();
 
-    // Sign OIDC state cookie for integrity protection
-    const cookieSigner = new CookieSigningService(c.env.COOKIE_SIGNING_KEY);
-    const cookieValue = JSON.stringify({
+    // Store OIDC state and code verifier in KV for callback verification
+    const stateData = JSON.stringify({
       state: authRequest.state,
       codeVerifier: authRequest.codeVerifier
     });
-    const signedValue = await cookieSigner.sign(cookieValue);
-
-    // Store in both cookie AND KV as fallback
-    const sessionId = crypto.randomUUID();
     
-    console.log('Setting cookies:', {
-      sessionId,
-      signedValueLength: signedValue.length,
-      cookieValue: signedValue.substring(0, 50) + '...'
+    console.log('Storing OIDC state in KV:', {
+      state: authRequest.state.substring(0, 10) + '...'
     });
     
-    // Store signed PKCE verifier and state in secure cookie (short-lived)
-    setCookie(c, 'oidc_state', signedValue, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'Lax',
-      maxAge: 1200, // 20 minutes
-      path: '/',
-      domain: undefined
-    });
-    
-    // Fallback: Store in KV with session ID in cookie
-    setCookie(c, 'oidc_session', sessionId, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'Lax',
-      maxAge: 1200,
-      path: '/'
-    });
-    
-    // Store state data in KV with URL-accessible key (ultimate fallback)
+    // Store with URL state as key for direct lookup
     const urlStateKey = `url_state:${authRequest.state}`;
     if (c.env.KV) {
-      await c.env.KV.put(urlStateKey, signedValue, { expirationTtl: 1200 });
+      await c.env.KV.put(urlStateKey, stateData, { expirationTtl: 1200 });
       console.log('Stored in KV with URL key:', urlStateKey);
     } else {
       console.log('KV not available');
@@ -162,19 +135,10 @@ app.get('/callback', async (c) => {
       return c.redirect(`${frontendUrl}/?auth=error&type=missing_state`);
     }
 
-    // Verify HMAC signature for integrity protection
-    const cookieSigner = new CookieSigningService(c.env.COOKIE_SIGNING_KEY);
-    const verifyResult = await cookieSigner.verify(storedData);
-
-    if (!verifyResult.valid || !verifyResult.value) {
-      console.error('OIDC state signature verification failed');
-      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
-      return c.redirect(`${frontendUrl}/?auth=error&type=invalid_signature`);
-    }
-
+    // Parse stored OIDC state data
     let parsedData;
     try {
-      parsedData = JSON.parse(verifyResult.value);
+      parsedData = JSON.parse(storedData);
     } catch (parseError) {
       console.error('Failed to parse OIDC state:', parseError);
       const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
@@ -190,16 +154,7 @@ app.get('/callback', async (c) => {
       match: state === storedState 
     });
 
-    // Clear the temporary cookies and KV
-    deleteCookie(c, 'oidc_state', { path: '/' });
-    deleteCookie(c, 'oidc_session', { path: '/' });
-    
-    // Clean up KV if used (reuse sessionId from above)
-    if (sessionId && c.env.KV) {
-      await c.env.KV.delete(`oidc_state:${sessionId}`);
-    }
-    
-    // Clean up URL-based KV entry
+    // Clean up KV storage
     if (state && c.env.KV) {
       await c.env.KV.delete(`url_state:${state}`);
     }
