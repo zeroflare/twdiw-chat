@@ -6,6 +6,7 @@ import { api, VerificationResult } from '../../services/api';
 export function VCVerification() {
   const { user, refreshUser } = useAuth();
   const [verification, setVerification] = useState<VerificationResult | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,10 +21,12 @@ export function VCVerification() {
       }
       
       const result = response.data!;
-      setVerification(prev => ({ 
-        ...result, 
-        qrCodeUrl: prev?.qrCodeUrl // Always keep the original qrCodeUrl
-      }));
+      setVerification(result);
+      
+      // Preserve qrCodeUrl in separate state
+      if (result.qrCodeUrl && !qrCodeUrl) {
+        setQrCodeUrl(result.qrCodeUrl);
+      }
       
       if (result.status === 'completed') {
         stopPolling();
@@ -57,6 +60,9 @@ export function VCVerification() {
       }
       
       setVerification(response.data!);
+      if (response.data!.qrCodeUrl) {
+        setQrCodeUrl(response.data!.qrCodeUrl);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '啟動驗證失敗');
     } finally {
@@ -66,6 +72,7 @@ export function VCVerification() {
 
   const resetVerification = () => {
     setVerification(null);
+    setQrCodeUrl(null);
     setError(null);
     stopPolling();
   };
@@ -120,12 +127,12 @@ export function VCVerification() {
             Debug: qrCodeUrl = {verification.qrCodeUrl ? 'EXISTS' : 'NULL'} | Status = {verification.status}
           </div>
           
-          {verification.qrCodeUrl && verification.status !== 'completed' && (
+          {qrCodeUrl && verification?.status !== 'completed' && (
             <div className="mb-4 text-center">
               <p className="text-sm text-gray-600 mb-2">請使用錢包 APP 掃描 QR 碼：</p>
               <div className="flex justify-center">
                 <img 
-                  src={verification.qrCodeUrl} 
+                  src={qrCodeUrl} 
                   alt="VC Verification QR Code"
                   className="w-48 h-48 border rounded-lg"
                 />
