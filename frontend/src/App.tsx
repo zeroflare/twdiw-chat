@@ -169,7 +169,9 @@ function AppContent() {
             {/* Left column - User info and VC verification */}
             <div className="lg:col-span-1 space-y-6">
               <UserProfile />
-              {user.status === 'GENERAL' && <VCVerification />}
+              {console.log('App.tsx - user.status:', user?.status, 'should show VCVerification:', user?.status === 'GENERAL')}
+              {/* Force show VCVerification for debugging */}
+              <VCVerification />
               <DailyMatching />
             </div>
 
