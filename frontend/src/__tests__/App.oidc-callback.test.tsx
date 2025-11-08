@@ -205,4 +205,155 @@ describe('App.tsx - OIDC Callback Route Handling', () => {
       });
     });
   });
+
+  describe('Infinite Loop Prevention', () => {
+    it('should only call refreshUser once, not repeatedly (prevent infinite loop)', async () => {
+      const mockRefreshUser = vi.fn();
+      const { useAuth } = await import('../hooks/useAuth');
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        loading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshUser: mockRefreshUser,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/api/auth/callback?code=test123']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      // Wait for initial effect to run
+      await waitFor(() => {
+        expect(mockRefreshUser).toHaveBeenCalled();
+      });
+
+      // Get initial call count
+      const initialCallCount = mockRefreshUser.mock.calls.length;
+
+      // Wait additional time to ensure no repeated calls
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Should not have additional calls (infinite loop prevention)
+      expect(mockRefreshUser).toHaveBeenCalledTimes(initialCallCount);
+      expect(initialCallCount).toBe(1); // Should only be called once
+    });
+
+    it('should handle error in refreshUser without causing infinite retry loop', async () => {
+      const mockRefreshUser = vi.fn().mockRejectedValue(new Error('Auth failed'));
+      const { useAuth } = await import('../hooks/useAuth');
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        loading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshUser: mockRefreshUser,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/api/auth/callback?code=test123']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      // Wait for effect to run
+      await waitFor(() => {
+        expect(mockRefreshUser).toHaveBeenCalled();
+      });
+
+      const initialCallCount = mockRefreshUser.mock.calls.length;
+
+      // Wait to ensure no retry loop
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Should not retry on error
+      expect(mockRefreshUser).toHaveBeenCalledTimes(initialCallCount);
+      expect(initialCallCount).toBe(1);
+    });
+  });
+
+  describe('URL Parameter Handling', () => {
+    it('should handle success parameter in URL', async () => {
+      const mockRefreshUser = vi.fn();
+      const { useAuth } = await import('../hooks/useAuth');
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        loading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshUser: mockRefreshUser,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/api/auth/callback?success=true']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      // Should still call refreshUser even with success parameter
+      await waitFor(() => {
+        expect(mockRefreshUser).toHaveBeenCalled();
+      });
+    });
+
+    it('should handle error parameter in URL', async () => {
+      const mockRefreshUser = vi.fn();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { useAuth } = await import('../hooks/useAuth');
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        loading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshUser: mockRefreshUser,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/api/auth/callback?error=auth_failed']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      // Should handle error parameter gracefully
+      // May log error but should not crash
+      await waitFor(() => {
+        // Component should still render (not crash)
+        expect(screen.queryByText(/處理登入/i) || screen.queryByText(/載入/i)).toBeTruthy();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should redirect after handling URL parameters without infinite redirects', async () => {
+      const mockRefreshUser = vi.fn();
+      const { useAuth } = await import('../hooks/useAuth');
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        loading: false,
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshUser: mockRefreshUser,
+      });
+
+      const { container } = render(
+        <MemoryRouter initialEntries={['/api/auth/callback?code=test123']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      // Should redirect to main page
+      await waitFor(() => {
+        expect(screen.queryByText('歡迎來到三人行必有我師論壇')).toBeTruthy();
+      });
+
+      // Verify we're not stuck on callback route
+      expect(container.textContent).not.toContain('處理登入回應中');
+    });
+  });
 });

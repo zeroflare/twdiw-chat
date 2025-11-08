@@ -1,36 +1,31 @@
-/**
- * Main entry point for twdiw-chat Cloudflare Worker
- * Integrates all API routes and handles scheduled events
- */
-
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
-// Import API routes
 import authRoutes from './api/auth';
 import forumsRoutes from './api/forums';
-import vcVerificationRoutes from './api/vc-verification';
+import vcRoutes from './api/vc';
 import chatRoutes from './api/chat';
 import adminRoutes from './api/admin';
 import devRoutes from './api/dev';
+import sessionCleanup from './scheduled/sessionCleanup';
 
-// Import scheduled worker
-import sessionCleanup from './scheduled/session-cleanup';
-
-// Create main app
 const app = new Hono();
 
-// CORS middleware
+// CORS configuration
 app.use('*', cors({
-  origin: [
-    'http://localhost:3000', 
-    'https://twdiw-chat-app.pages.dev',
-    /^https:\/\/.*\.twdiw-chat-app\.pages\.dev$/
-  ],
+  origin: (origin) => {
+    // Allow requests from the same domain and localhost for development
+    if (!origin || origin.includes('workers.dev') || origin.includes('localhost')) {
+      return origin;
+    }
+    return null;
+  },
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
 }));
 
-// API health check endpoint (moved to /api to avoid conflict with frontend)
+// API health check endpoint
 app.get('/api', (c) => {
   const isDev = c.env.DEV_MODE === 'true' || c.env.NODE_ENV === 'development';
   
@@ -53,22 +48,33 @@ app.get('/api', (c) => {
 // Mount API routes
 app.route('/api/auth', authRoutes);
 app.route('/api/forums', forumsRoutes);
-app.route('/api/vc/verify', vcVerificationRoutes);
+app.route('/api/vc', vcRoutes);
 app.route('/api/chat', chatRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/dev', devRoutes);
 
-// Catch-all route - return 404 for any non-API routes
-// Frontend is served separately via Cloudflare Pages
+// SPA routing - serve index.html for non-API and non-asset routes
 app.get('*', (c) => {
-  return c.json({
-    error: 'Not Found',
-    message: 'This is the API backend. Frontend is served separately via Cloudflare Pages.'
-  }, 404);
+  // If it's an API route, let it fall through to 404
+  if (c.req.path.startsWith('/api/')) {
+    return c.json({ error: 'Not Found' }, 404);
+  }
+  
+  // If it's an assets route, let Cloudflare Workers Site handle it
+  if (c.req.path.startsWith('/assets/')) {
+    return c.notFound(); // This will let Cloudflare serve the actual JS/CSS files
+  }
+  
+  // For all other routes, serve the SPA with dynamically embedded HTML
+  return c.html(`__INDEX_HTML_PLACEHOLDER__`);
 });
 
-// 404 handler
+// 404 handler for API routes only
 app.notFound((c) => {
+  if (c.req.path.startsWith('/api/')) {
+    return c.json({ error: 'Not Found' }, 404);
+  }
+  // Non-API 404s should have been handled by the SPA route above
   return c.json({ error: 'Not Found' }, 404);
 });
 
@@ -80,8 +86,6 @@ app.onError((err, c) => {
 
 // Export for Cloudflare Workers
 export default {
-  async fetch(request: Request, env: any, ctx: any) {
-    return app.fetch(request, env, ctx);
-  },
+  fetch: app.fetch,
   scheduled: sessionCleanup.scheduled,
 };

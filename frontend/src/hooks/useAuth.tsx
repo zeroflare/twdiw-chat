@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api, Member } from '../services/api';
 
 interface AuthContextType {
@@ -15,18 +15,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
+    console.log('refreshUser() started.');
     try {
       const response = await api.getCurrentUser();
       if (response.data) {
         setUser(response.data);
+        console.log('refreshUser() finished. User state updated:', response.data.nickname);
       } else {
         setUser(null);
+        console.log('refreshUser() finished. No user data received.');
       }
     } catch (error) {
+      console.error('refreshUser() failed:', error);
       setUser(null);
     }
-  };
+    console.log('refreshUser() completed.');
+  }, []); // No dependencies - this function should be stable
 
   const login = async () => {
     try {
@@ -56,18 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if user is logged in on mount
+    // Note: OIDC callback handling is now done by dedicated OIDCCallback component
     refreshUser().finally(() => setLoading(false));
-
-    // Handle OIDC callback
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('code')) {
-      // This is an OIDC callback, refresh user data
-      setTimeout(() => {
-        refreshUser();
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }, 1000);
-    }
   }, []);
 
   return (

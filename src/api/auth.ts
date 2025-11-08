@@ -117,11 +117,11 @@ app.get('/callback', async (c) => {
     console.log('OIDC Callback received:', { code: !!code, state: !!state, error });
 
     if (error) {
-      return c.json({ error: `OIDC error: ${error}` }, 400);
+      return c.redirect('/?auth=error&type=oidc_error');
     }
 
     if (!code || !state) {
-      return c.json({ error: 'Missing authorization code or state' }, 400);
+      return c.redirect('/?auth=error&type=missing_params');
     }
 
     // Retrieve stored PKCE data with KV fallback
@@ -157,7 +157,7 @@ app.get('/callback', async (c) => {
     console.log('Stored OIDC data:', { hasStoredData: !!storedData });
 
     if (!storedData) {
-      return c.json({ error: 'Missing OIDC state data' }, 400);
+      return c.redirect('/?auth=error&type=missing_state');
     }
 
     // Verify HMAC signature for integrity protection
@@ -166,7 +166,7 @@ app.get('/callback', async (c) => {
 
     if (!verifyResult.valid || !verifyResult.value) {
       console.error('OIDC state signature verification failed');
-      return c.json({ error: 'Invalid OIDC state signature' }, 400);
+      return c.redirect('/?auth=error&type=invalid_signature');
     }
 
     let parsedData;
@@ -174,7 +174,7 @@ app.get('/callback', async (c) => {
       parsedData = JSON.parse(verifyResult.value);
     } catch (parseError) {
       console.error('Failed to parse OIDC state:', parseError);
-      return c.json({ error: 'Invalid OIDC state data' }, 400);
+      return c.redirect('/?auth=error&type=invalid_state_data');
     }
 
     const { state: storedState, codeVerifier } = parsedData;
@@ -265,23 +265,15 @@ app.get('/callback', async (c) => {
     });
 
     console.log('Login successful for user:', claims.sub);
-    return c.json({
-      message: 'Login successful',
-      member: {
-        id: member.getId(),
-        nickname: member.getNickname(),
-        status: member.getStatus(),
-        rank: member.getDerivedRank()
-      }
-    });
+
+    // Redirect to frontend route instead of API endpoint to prevent infinite loop
+    // Frontend OIDCCallback component will handle auth state refresh and redirect to dashboard
+    return c.redirect('/?auth=success');
 
   } catch (error) {
     console.error('OIDC callback failed:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    return c.json({ 
-      error: 'Authentication failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.redirect('/?auth=error&type=auth_failed');
   }
 });
 

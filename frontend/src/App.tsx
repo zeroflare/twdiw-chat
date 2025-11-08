@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { LoginButton } from './components/auth/LoginButton';
@@ -11,7 +11,51 @@ import { ChatSession } from './components/chat/ChatSession';
 import { api } from './services/api';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle auth parameters from backend redirects
+  useEffect(() => {
+    console.log('AppContent useEffect triggered. Location:', window.location.href);
+    console.log('location.search:', location.search);
+    
+    const searchParams = new URLSearchParams(location.search);
+    const authStatus = searchParams.get('auth');
+    
+    console.log('authStatus:', authStatus);
+    
+    if (authStatus === 'success') {
+      console.log('Auth success detected, refreshing user state');
+      console.log('About to call refreshUser()...');
+      
+      refreshUser().then(() => {
+        console.log('refreshUser() completed. About to navigate...');
+        console.log('Current URL before navigate:', window.location.href);
+        
+        // Clean up URL parameters
+        navigate('/', { replace: true });
+        
+        console.log('navigate() called. URL should be cleaned.');
+        // Check URL after a short delay to see if it actually changed
+        setTimeout(() => {
+          console.log('URL after navigate (delayed check):', window.location.href);
+        }, 100);
+      }).catch((error) => {
+        console.error('refreshUser() failed:', error);
+        // Still clean up URL even if refresh fails
+        navigate('/', { replace: true });
+      });
+    } else if (authStatus === 'error') {
+      const errorType = searchParams.get('type');
+      console.error('Auth error detected:', errorType);
+      console.log('Cleaning up error URL...');
+      // Clean up URL parameters
+      navigate('/', { replace: true });
+    }
+    
+    console.log('AppContent useEffect finished.');
+  }, [location.search, navigate]); // Remove refreshUser from dependencies
 
   if (loading) {
     return (
@@ -149,28 +193,65 @@ function AppContent() {
  *
  * Handles the return from SSO provider after successful authentication.
  * When user is redirected back to /api/auth/callback:
- * 1. Shows a loading indicator
- * 2. Calls refreshUser() to fetch updated authentication state
- * 3. Redirects to main dashboard (/)
+ * 1. Checks URL parameters (success/error) from backend redirect
+ * 2. Shows a loading indicator
+ * 3. Calls refreshUser() to fetch updated authentication state
+ * 4. Redirects to main dashboard (/)
  *
  * This solves the issue where backend returns JSON but frontend
  * needs to update auth state and show the main UI.
+ *
+ * Infinite Loop Prevention:
+ * - Uses useRef to track if callback has been processed
+ * - Only runs once per mount, even if dependencies change
+ * - No dependencies in useEffect to prevent re-triggering
  */
 function OIDCCallback() {
   const { refreshUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isProcessing, setIsProcessing] = useState(true);
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Prevent infinite loop: only process callback once per session
+    // Use sessionStorage to persist across React Strict Mode remounts
+    const sessionKey = `oidc_callback_processed_${location.pathname}`;
+    if (hasProcessed.current || sessionStorage.getItem(sessionKey)) {
+      return;
+    }
+    hasProcessed.current = true;
+    sessionStorage.setItem(sessionKey, 'true');
+
     const handleCallback = async () => {
       try {
         setIsProcessing(true);
+
+        // Check URL parameters for success/error indicators from backend
+        const searchParams = new URLSearchParams(location.search);
+        const hasError = searchParams.get('error');
+        const hasSuccess = searchParams.get('success');
+
+        if (hasError) {
+          console.error('OIDC authentication error:', hasError);
+          // Continue to refresh user state - backend may have partial auth data
+        }
+
+        if (hasSuccess) {
+          console.log('OIDC authentication successful');
+        }
+
         // Refresh user state to get updated authentication info
+        // This is necessary even on error to sync frontend state with backend
         await refreshUser();
       } catch (error) {
         console.error('Failed to refresh user after OIDC callback:', error);
+        // Don't retry - prevent infinite loop on persistent errors
       } finally {
         setIsProcessing(false);
+        // Clean up session storage key
+        const sessionKey = `oidc_callback_processed_${location.pathname}`;
+        sessionStorage.removeItem(sessionKey);
         // Redirect to main dashboard regardless of success/failure
         // If auth failed, user will see login page; if succeeded, they'll see their dashboard
         navigate('/', { replace: true });
@@ -178,7 +259,9 @@ function OIDCCallback() {
     };
 
     handleCallback();
-  }, [refreshUser, navigate]);
+    // Empty dependency array - run only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">

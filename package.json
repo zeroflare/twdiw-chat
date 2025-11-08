@@ -33,6 +33,7 @@
   "author": "Amazon Q Developer",
   "license": "MIT",
   "dependencies": {
+    "@cloudflare/kv-asset-handler": "^0.4.0",
     "hono": "^4.10.4",
     "uuid": "^13.0.0"
   },

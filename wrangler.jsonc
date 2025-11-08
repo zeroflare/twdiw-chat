@@ -10,6 +10,11 @@
     "command": ""
   },
   
+  // Static assets configuration
+  "site": {
+    "bucket": "./frontend/dist"
+  },
+  
   // Scheduled events (Cron jobs)
   "triggers": {
     "crons": ["*/5 * * * *"] // Every 5 minutes for session cleanup
