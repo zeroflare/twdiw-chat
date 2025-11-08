@@ -112,7 +112,12 @@ export function VCVerification() {
         </div>
       ) : (
         <div>
-          {verification.qrCodeUrl && (
+          {/* Debug info */}
+          <div className="mb-2 p-2 bg-gray-100 text-xs">
+            Debug: qrCodeUrl = {verification.qrCodeUrl ? 'EXISTS' : 'NULL'} | Status = {verification.status}
+          </div>
+          
+          {verification.qrCodeUrl && verification.status !== 'completed' && (
             <div className="mb-4 text-center">
               <p className="text-sm text-gray-600 mb-2">請使用錢包 APP 掃描 QR 碼：</p>
               <div className="flex justify-center">
