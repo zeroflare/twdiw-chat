@@ -3,6 +3,10 @@ name = "twdiw-chat"
 main = "src/index.ts"
 compatibility_date = "2024-05-15"
 
+# Scheduled events (Cron jobs)
+[triggers]
+crons = ["*/5 * * * *"] # Every 5 minutes for session cleanup
+
 # Environment variables for the Worker
 # For local development, you can place secrets here.
 #
@@ -14,6 +18,19 @@ compatibility_date = "2024-05-15"
 [vars]
 TWDIW_API_URL = "https://verifier-sandbox.wallet.gov.tw"
 TWDIW_API_TOKEN = "O1DhqxTYuxLh43UvyMuitH1xufPGlijb"
+OIDC_ISSUER_URL = "https://verifier-sandbox.wallet.gov.tw"
+OIDC_REDIRECT_URI = "https://twdiw-chat.workers.dev/api/auth/callback"
+TWDIW_API_ENDPOINT = "https://verifier-sandbox.wallet.gov.tw/api"
+TWDIW_REF = "twdiw-chat"
+TLKIO_BASE_URL = "https://tlk.io"
+TLKIO_THEME = "theme--minimal"
+
+# Secrets (set with: wrangler secret put <NAME>)
+# OIDC_CLIENT_ID
+# OIDC_CLIENT_SECRET  
+# JWT_SECRET
+# ENCRYPTION_KEY
+# ADMIN_TOKEN
 
 # Bindings for databases, KV namespaces, etc.
 # We will define our D1 database here for storing user profiles and sessions.
