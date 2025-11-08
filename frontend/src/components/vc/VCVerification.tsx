@@ -7,6 +7,9 @@ export function VCVerification() {
   const { user, refreshUser } = useAuth();
   const [verification, setVerification] = useState<VerificationResult | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  
+  // Debug QR code state
+  console.log('VCVerification render - qrCodeUrl:', qrCodeUrl, 'verification:', verification?.status);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,12 +28,14 @@ export function VCVerification() {
       
       // Preserve qrCodeUrl in separate state
       if (result.qrCodeUrl && !qrCodeUrl) {
+        console.log('Setting qrCodeUrl from polling:', result.qrCodeUrl);
         setQrCodeUrl(result.qrCodeUrl);
       }
       
       if (result.status === 'completed') {
         stopPolling();
-        await refreshUser();
+        // Don't call refreshUser immediately to keep QR code visible
+        // await refreshUser();
         setError(null);
       } else if (result.status === 'failed' || result.status === 'expired') {
         stopPolling();
@@ -61,6 +66,7 @@ export function VCVerification() {
       
       setVerification(response.data!);
       if (response.data!.qrCodeUrl) {
+        console.log('Setting qrCodeUrl from startVerification:', response.data!.qrCodeUrl);
         setQrCodeUrl(response.data!.qrCodeUrl);
       }
     } catch (err) {
@@ -71,6 +77,7 @@ export function VCVerification() {
   };
 
   const resetVerification = () => {
+    console.log('resetVerification called - clearing qrCodeUrl');
     setVerification(null);
     setQrCodeUrl(null);
     setError(null);
@@ -171,9 +178,18 @@ export function VCVerification() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               <h3 className="text-lg font-medium text-green-800 mb-2">驗證成功！</h3>
-              <p className="text-sm text-green-700">
-                您的階級卡已驗證完成，頁面將自動更新。
+              <p className="text-sm text-green-700 mb-4">
+                您的階級卡已驗證完成，請點擊下方按鈕更新狀態。
               </p>
+              <button
+                onClick={async () => {
+                  await refreshUser();
+                  resetVerification();
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                更新我的狀態
+              </button>
             </div>
           )}
         </div>
