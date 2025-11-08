@@ -112,6 +112,19 @@ export function VCVerification() {
         </div>
       ) : (
         <div>
+          {verification.qrCodeUrl && (
+            <div className="mb-4 text-center">
+              <p className="text-sm text-gray-600 mb-2">請使用錢包 APP 掃描 QR 碼：</p>
+              <div className="flex justify-center">
+                <img 
+                  src={verification.qrCodeUrl} 
+                  alt="VC Verification QR Code"
+                  className="w-48 h-48 border rounded-lg"
+                />
+              </div>
+            </div>
+          )}
+          
           {verification.status === 'pending' && (
             <div className="text-center">
               <div className="mb-4">
@@ -123,19 +136,6 @@ export function VCVerification() {
                   等待驗證中...
                 </div>
               </div>
-              
-              {verification.qrCodeUrl && (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">請使用錢包 APP 掃描 QR 碼：</p>
-                  <div className="flex justify-center">
-                    <img 
-                      src={verification.qrCodeUrl} 
-                      alt="VC Verification QR Code"
-                      className="w-48 h-48 border rounded-lg"
-                    />
-                  </div>
-                </div>
-              )}
               
               <p className="text-sm text-gray-500 mb-4">
                 請在錢包 APP 中完成驗證流程
