@@ -259,7 +259,7 @@ app.get('/callback', async (c) => {
     setCookie(c, 'session', sessionToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Strict',
+      sameSite: 'None', // Allow cross-domain for frontend/backend separation
       maxAge: 3600, // 1 hour
       path: '/'
     });
@@ -307,7 +307,7 @@ app.post('/refresh', authMiddleware(), async (c) => {
     setCookie(c, 'session', newToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Strict',
+      sameSite: 'None', // Allow cross-domain for frontend/backend separation
       maxAge: 3600,
       path: '/'
     });

@@ -44,10 +44,8 @@ export interface MockUser {
 }
 
 class ApiService {
-  private baseUrl = (import.meta as any).env?.DEV 
-    ? '/api' 
-    : 'https://twdiw-chat.csw30454.workers.dev/api';
-  private isDev = (import.meta as any).env?.DEV || window.location.hostname === 'localhost';
+  private baseUrl = import.meta.env.VITE_API_URL || 'https://twdiw-chat.csw30454.workers.dev/api';
+  private isDev = import.meta.env.DEV || window.location.hostname === 'localhost';
 
   private async request<T>(
     endpoint: string,
