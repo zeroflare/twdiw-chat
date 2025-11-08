@@ -61,8 +61,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if user is logged in on mount
-    // Note: OIDC callback handling is now done by dedicated OIDCCallback component
-    refreshUser().finally(() => setLoading(false));
+    // Skip if auth callback is in progress (App.tsx will handle it)
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAuthCallback = urlParams.has('auth') || urlParams.has('token');
+    
+    if (!isAuthCallback) {
+      refreshUser().finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   return (

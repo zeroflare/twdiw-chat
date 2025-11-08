@@ -1,10 +1,10 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09 - Token Storage Timing Fix)
-- **Start Time**: 2025-11-09T15:30:00+08:00
-- **Target**: Fix timing issue where refreshUser() is called before token is stored
-- **Phase**: Bug Fix - COMPLETED
+## Current Session - COMPLETED (2025-11-09 - Manual useAuth Race Condition Fix)
+- **Start Time**: 2025-11-09T03:10:49+08:00
+- **Target**: Manually fix useAuth hook race condition causing 401 errors
+- **Phase**: Manual Fix - COMPLETED
 - **Gate**: Low
-- **Method**: Add microtask delay to ensure token storage completes before refreshUser()
+- **Method**: Add URL parameter check to skip refreshUser() during auth callback
 
 ## Phase Results - Current Session (2025-11-09 - Token Storage Timing Fix)
 - **Summary**: Fixed race condition where refreshUser() could be called before localStorage token is fully stored
