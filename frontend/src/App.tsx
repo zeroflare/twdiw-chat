@@ -14,55 +14,71 @@ function AppContent() {
   const { user, loading, refreshUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const hasProcessedAuth = useRef(false);
 
   // Handle auth parameters from backend redirects
   useEffect(() => {
     console.log('AppContent useEffect triggered. Location:', window.location.href);
     console.log('location.search:', location.search);
-    
+
     const searchParams = new URLSearchParams(location.search);
     const authStatus = searchParams.get('auth');
     const token = searchParams.get('token');
-    
+
     console.log('authStatus:', authStatus);
-    
+
+    // Prevent infinite loop: only process auth parameters once
+    if (!authStatus || hasProcessedAuth.current) {
+      return;
+    }
+
+    hasProcessedAuth.current = true;
+
     if (authStatus === 'success') {
       console.log('Auth success detected, refreshing user state');
       console.log('About to call refreshUser()...');
-      
+
       // Store token if provided
       if (token) {
         localStorage.setItem('auth_token', token);
         console.log('Token stored in localStorage');
       }
-      
+
       refreshUser().then(() => {
         console.log('refreshUser() completed. About to navigate...');
         console.log('Current URL before navigate:', window.location.href);
-        
-        // Clean up URL parameters
-        navigate('/', { replace: true });
-        
+
+        // Clean up URL parameters - explicitly remove auth params
+        const newSearchParams = new URLSearchParams(location.search);
+        newSearchParams.delete('auth');
+        newSearchParams.delete('token');
+        const newSearch = newSearchParams.toString();
+        navigate(location.pathname + (newSearch ? `?${newSearch}` : ''), { replace: true });
+
         console.log('navigate() called. URL should be cleaned.');
-        // Check URL after a short delay to see if it actually changed
-        setTimeout(() => {
-          console.log('URL after navigate (delayed check):', window.location.href);
-        }, 100);
       }).catch((error) => {
         console.error('refreshUser() failed:', error);
         // Still clean up URL even if refresh fails
-        navigate('/', { replace: true });
+        const newSearchParams = new URLSearchParams(location.search);
+        newSearchParams.delete('auth');
+        newSearchParams.delete('token');
+        const newSearch = newSearchParams.toString();
+        navigate(location.pathname + (newSearch ? `?${newSearch}` : ''), { replace: true });
       });
     } else if (authStatus === 'error') {
       const errorType = searchParams.get('type');
       console.error('Auth error detected:', errorType);
       console.log('Cleaning up error URL...');
-      // Clean up URL parameters
-      navigate('/', { replace: true });
+      // Clean up URL parameters - explicitly remove auth params
+      const newSearchParams = new URLSearchParams(location.search);
+      newSearchParams.delete('auth');
+      newSearchParams.delete('type');
+      const newSearch = newSearchParams.toString();
+      navigate(location.pathname + (newSearch ? `?${newSearch}` : ''), { replace: true });
     }
-    
+
     console.log('AppContent useEffect finished.');
-  }, [location.search, navigate]); // Remove refreshUser from dependencies
+  }, [location.search, location.pathname, navigate, refreshUser]);
 
   if (loading) {
     return (

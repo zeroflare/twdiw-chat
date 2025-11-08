@@ -1,5 +1,59 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09 - Frontend/Backend Separation Deployment)
+## Current Session - COMPLETED (2025-11-09 - AppContent useEffect Infinite Loop Fix)
+- **Start Time**: 2025-11-09T03:45:00+08:00
+- **Target**: Fix URL parameter cleanup in AppContent useEffect to prevent infinite loop
+- **Phase**: Bug Fix - COMPLETED
+- **Gate**: Low
+- **Method**: Minimal changes - add useRef guard and explicit parameter deletion
+
+## Phase Results - Current Session (2025-11-09 - AppContent useEffect Infinite Loop Fix)
+- **Summary**: Fixed infinite loop in AppContent component by preventing duplicate auth parameter processing
+- **Root Cause**: useEffect was retriggering on location.search changes even after navigate() was called, causing auth parameters to be processed multiple times
+- **User Experience Issue**:
+  - After successful auth redirect with `?auth=success&token=...`, useEffect would trigger repeatedly
+  - navigate() was not properly preventing re-execution of the same auth logic
+  - Component would process auth parameters infinitely
+- **Method**: useRef guard pattern with explicit URL parameter cleanup
+  - **Analysis**: useEffect dependency on location.search caused retrigger even after navigate()
+  - **Issue**: No guard to prevent processing same auth status multiple times
+  - **Fix**: Added hasProcessedAuth useRef flag + explicit parameter deletion in navigate()
+- **ChangedPaths**:
+  - frontend/src/App.tsx (modified - AppContent component):
+    * Line 17: Added `const hasProcessedAuth = useRef(false);` to track processing state
+    * Lines 30-35: Added early return guard `if (!authStatus || hasProcessedAuth.current) return;` and set flag `hasProcessedAuth.current = true;`
+    * Lines 51-56: Changed navigate() to explicitly delete auth/token parameters instead of navigate('/')
+    * Lines 62-66: Added explicit parameter cleanup for error case
+    * Lines 72-77: Added explicit parameter cleanup for auth error case
+    * Line 81: Updated useEffect dependencies to include location.pathname and refreshUser
+- **Key Changes**:
+  1. **useRef Guard**: Prevents processing auth parameters more than once per component mount
+  2. **Explicit Parameter Deletion**: Instead of `navigate('/', { replace: true })`, now explicitly deletes auth-related params:
+     ```javascript
+     const newSearchParams = new URLSearchParams(location.search);
+     newSearchParams.delete('auth');
+     newSearchParams.delete('token');
+     const newSearch = newSearchParams.toString();
+     navigate(location.pathname + (newSearch ? `?${newSearch}` : ''), { replace: true });
+     ```
+  3. **Early Return**: Guards prevent execution if no authStatus or already processed
+- **Benefits**:
+  - No infinite loop from repeated auth parameter processing
+  - Clean URL parameter removal preserves other query parameters
+  - Minimal changes to existing auth flow logic
+  - Same pattern as OIDCCallback component for consistency
+- **AcceptanceCheck**: yes - Fixes infinite loop:
+  - hasProcessedAuth ref prevents duplicate processing
+  - Explicit parameter deletion ensures clean URL updates
+  - Early return guards protect against re-triggering
+  - Auth flow functionality preserved (token storage, refreshUser, error handling)
+  - Console logs remain for debugging
+- **RollbackPlan**:
+  1. Remove `const hasProcessedAuth = useRef(false);` declaration
+  2. Remove early return guard and flag setting
+  3. Restore simple `navigate('/', { replace: true })` calls
+  4. Restore original useEffect dependencies: `[location.search, navigate]`
+
+## Previous Session - COMPLETED (2025-11-09 - Frontend/Backend Separation Deployment)
 - **Start Time**: 2025-11-09T02:30:00+08:00
 - **Target**: Implement frontend/backend separation deployment strategy
 - **Phase**: Architecture Refactoring - COMPLETED
