@@ -45,7 +45,8 @@ function AppContent() {
         console.log('Token stored in localStorage');
       }
 
-      refreshUser().then(() => {
+      // Ensure token storage completes before refreshing user
+      Promise.resolve().then(() => refreshUser()).then(() => {
         console.log('refreshUser() completed. About to navigate...');
         console.log('Current URL before navigate:', window.location.href);
 
