@@ -150,48 +150,7 @@ export function VCVerification() {
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-4">階級卡驗證</h2>
       
-      {/* Always show QR code if available */}
-      {qrCodeUrl && (
-        <div style={{
-          marginBottom: '16px', 
-          textAlign: 'center', 
-          backgroundColor: '#fef3c7', 
-          padding: '16px', 
-          border: '2px solid #f59e0b',
-          borderRadius: '8px',
-          position: 'fixed',
-          top: '50px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 9999,
-          width: '400px'
-        }}>
-          <p style={{fontSize: '14px', color: '#374151', marginBottom: '8px', fontWeight: 'bold'}}>
-            QR CODE FOUND - 請使用錢包 APP 掃描：
-          </p>
-          <div style={{display: 'flex', justifyContent: 'center'}}>
-            <img 
-              src={qrCodeUrl} 
-              alt="VC Verification QR Code"
-              style={{
-                width: '192px', 
-                height: '192px', 
-                border: '4px solid #ef4444', 
-                borderRadius: '8px', 
-                backgroundColor: 'white',
-                display: 'block',
-                visibility: 'visible',
-                opacity: '1'
-              }}
-              onLoad={() => console.log('QR code image loaded successfully')}
-              onError={() => console.log('QR code image failed to load')}
-            />
-          </div>
-          <p style={{fontSize: '12px', color: '#dc2626', marginTop: '8px'}}>
-            DEBUG: qrCodeUrl = {qrCodeUrl}
-          </p>
-        </div>
-      )}
+
       
       {!verification ? (
         <div>
