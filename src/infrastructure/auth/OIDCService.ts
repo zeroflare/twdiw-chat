@@ -53,7 +53,7 @@ export class OIDCService {
       code_challenge_method: pkce.codeChallengeMethod
     });
 
-    const authUrl = `${oidcConfig.issuerUrl}/auth?${params.toString()}`;
+    const authUrl = `${oidcConfig.issuerUrl}/auth/login?${params.toString()}`;
 
     return {
       authUrl,
@@ -75,7 +75,7 @@ export class OIDCService {
 
     const oidcConfig = this.config.getConfig();
     
-    const tokenEndpoint = `${oidcConfig.issuerUrl}/token`;
+    const tokenEndpoint = `${oidcConfig.issuerUrl}/oidc/token`;
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code: code,

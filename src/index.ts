@@ -24,8 +24,8 @@ const app = new Hono();
 app.use('*', cors({
   origin: [
     'http://localhost:3000', 
-    'https://twdiw-chat.pages.dev',
-    'https://e3e365db.twdiw-chat-frontend.pages.dev'
+    'https://twdiw-chat-app.pages.dev',
+    /^https:\/\/.*\.twdiw-chat-app\.pages\.dev$/
   ],
   credentials: true,
 }));

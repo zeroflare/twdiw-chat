@@ -6,10 +6,8 @@ import { UserProfile } from './components/auth/UserProfile';
 import { VCVerification } from './components/vc/VCVerification';
 import { ForumList } from './components/forum/ForumList';
 import { DevLogin } from './components/auth/DevLogin';
-import { TestButton } from './components/TestButton';
 import { DailyMatching } from './components/matching/DailyMatching';
 import { ChatSession } from './components/chat/ChatSession';
-import { TlkTest } from './components/chat/TlkTest';
 import { api } from './services/api';
 
 function AppContent() {
@@ -43,7 +41,6 @@ function AppContent() {
               )}
             </div>
             <div className="flex items-center space-x-4">
-              <TestButton />
               <LoginButton />
             </div>
           </div>
@@ -154,7 +151,6 @@ function App() {
         <Routes>
           <Route path="/" element={<AppContent />} />
           <Route path="/chat/session/:sessionId" element={<ChatSession />} />
-          <Route path="/test-tlk" element={<TlkTest />} />
         </Routes>
       </AuthProvider>
     </Router>

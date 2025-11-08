@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'hono';
-import { setCookie, deleteCookie } from 'hono/cookie';
+import { setCookie, deleteCookie, getCookie } from 'hono/cookie';
 import { OIDCService } from '../infrastructure/auth/OIDCService';
 import { JWTService } from '../infrastructure/auth/JWTService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
@@ -78,6 +78,8 @@ app.get('/callback', async (c) => {
     const state = c.req.query('state');
     const error = c.req.query('error');
 
+    console.log('OIDC Callback received:', { code: !!code, state: !!state, error });
+
     if (error) {
       return c.json({ error: `OIDC error: ${error}` }, 400);
     }
@@ -87,12 +89,22 @@ app.get('/callback', async (c) => {
     }
 
     // Retrieve stored PKCE data
-    const storedData = c.req.cookie('oidc_state');
+    const storedData = getCookie(c, 'oidc_state');
+    console.log('Stored OIDC data:', { hasStoredData: !!storedData });
+    
     if (!storedData) {
       return c.json({ error: 'Missing OIDC state data' }, 400);
     }
 
-    const { state: storedState, codeVerifier } = JSON.parse(storedData);
+    let parsedData;
+    try {
+      parsedData = JSON.parse(storedData);
+    } catch (parseError) {
+      console.error('Failed to parse OIDC state:', parseError);
+      return c.json({ error: 'Invalid OIDC state data' }, 400);
+    }
+
+    const { state: storedState, codeVerifier } = parsedData;
 
     // Clear the temporary cookie
     deleteCookie(c, 'oidc_state', { path: '/api/auth' });
@@ -100,27 +112,40 @@ app.get('/callback', async (c) => {
     const oidcService = new OIDCService(c.env);
     
     // Exchange code for tokens
+    console.log('Exchanging code for tokens...');
     const tokens = await oidcService.exchangeCodeForTokens(code, codeVerifier, storedState, state);
+    console.log('Token exchange successful');
     
     // Verify ID token
+    console.log('Verifying ID token...');
     const claims = await oidcService.verifyIDToken(tokens.id_token);
+    console.log('ID token verified, claims:', { sub: claims.sub, name: claims.name });
 
     // Find or create member profile
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, c.env.ENCRYPTION_KEY);
+    console.log('Setting up database...');
+    const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    
+    console.log('Looking for existing member...');
     let member = await memberRepo.findByOidcSubjectId(claims.sub);
 
     if (!member) {
+      console.log('Creating new member...');
       // Create new member profile
-      member = MemberProfile.create(
-        claims.sub,
-        claims.name || claims.email || 'User',
-        'Unknown', // gender - will be encrypted
-        [] // interests - will be encrypted
-      );
+      member = MemberProfile.create({
+        oidcSubjectId: claims.sub,
+        nickname: claims.name || claims.email || 'User',
+        gender: 'Unknown',
+        interests: ''
+      });
       await memberRepo.save(member);
+      console.log('New member created');
+    } else {
+      console.log('Existing member found');
     }
 
     // Create session token
+    console.log('Creating session token...');
     const sessionToken = await oidcService.createSessionToken(claims.sub, member.getId());
 
     // Set secure session cookie
@@ -132,6 +157,7 @@ app.get('/callback', async (c) => {
       path: '/'
     });
 
+    console.log('Login successful for user:', claims.sub);
     return c.json({
       message: 'Login successful',
       member: {
@@ -144,7 +170,11 @@ app.get('/callback', async (c) => {
 
   } catch (error) {
     console.error('OIDC callback failed:', error);
-    return c.json({ error: 'Authentication failed' }, 500);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    return c.json({ 
+      error: 'Authentication failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
   }
 });
 
