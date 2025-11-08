@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { LoginButton } from './components/auth/LoginButton';
@@ -14,7 +14,6 @@ function AppContent() {
   const { user, loading, refreshUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const hasProcessedAuth = useRef(false);
 
   // Handle auth parameters from backend redirects
   useEffect(() => {
@@ -28,11 +27,13 @@ function AppContent() {
     console.log('authStatus:', authStatus);
 
     // Prevent infinite loop: only process auth parameters once
-    if (!authStatus || hasProcessedAuth.current) {
+    // Use sessionStorage to persist across component remounts after navigate()
+    const sessionKey = 'app_auth_processed';
+    if (!authStatus || sessionStorage.getItem(sessionKey)) {
       return;
     }
 
-    hasProcessedAuth.current = true;
+    sessionStorage.setItem(sessionKey, 'true');
 
     if (authStatus === 'success') {
       console.log('Auth success detected, refreshing user state');
@@ -53,6 +54,10 @@ function AppContent() {
         newSearchParams.delete('auth');
         newSearchParams.delete('token');
         const newSearch = newSearchParams.toString();
+
+        // Clean up sessionStorage guard after successful processing
+        sessionStorage.removeItem(sessionKey);
+
         navigate(location.pathname + (newSearch ? `?${newSearch}` : ''), { replace: true });
 
         console.log('navigate() called. URL should be cleaned.');
@@ -63,6 +68,10 @@ function AppContent() {
         newSearchParams.delete('auth');
         newSearchParams.delete('token');
         const newSearch = newSearchParams.toString();
+
+        // Clean up sessionStorage guard even on error
+        sessionStorage.removeItem(sessionKey);
+
         navigate(location.pathname + (newSearch ? `?${newSearch}` : ''), { replace: true });
       });
     } else if (authStatus === 'error') {
@@ -74,6 +83,10 @@ function AppContent() {
       newSearchParams.delete('auth');
       newSearchParams.delete('type');
       const newSearch = newSearchParams.toString();
+
+      // Clean up sessionStorage guard after error handling
+      sessionStorage.removeItem(sessionKey);
+
       navigate(location.pathname + (newSearch ? `?${newSearch}` : ''), { replace: true });
     }
 

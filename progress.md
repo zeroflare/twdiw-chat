@@ -1,10 +1,10 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09 - AppContent useEffect Infinite Loop Fix)
-- **Start Time**: 2025-11-09T03:45:00+08:00
-- **Target**: Fix URL parameter cleanup in AppContent useEffect to prevent infinite loop
+## Current Session - COMPLETED (2025-11-09 - AppContent useEffect Infinite Loop Fix v2)
+- **Start Time**: 2025-11-09T03:01:17+08:00
+- **Target**: Fix useRef guard that resets on component remount after navigate()
 - **Phase**: Bug Fix - COMPLETED
 - **Gate**: Low
-- **Method**: Minimal changes - add useRef guard and explicit parameter deletion
+- **Method**: Replace useRef with sessionStorage for persistent guard
 
 ## Phase Results - Current Session (2025-11-09 - AppContent useEffect Infinite Loop Fix)
 - **Summary**: Fixed infinite loop in AppContent component by preventing duplicate auth parameter processing
@@ -1794,6 +1794,12 @@
 3. Preserved backward compatibility by keeping generateEmbedHtml() intact
 4. Added comprehensive test coverage with TDD approach
 **Impact**: tlk.io chat embeds should now work correctly with cross-origin cookie authentication, eliminating 403 errors
+
+## Current Session Results
+- **Summary**: Fixed OIDC callback infinite loop by replacing useRef with sessionStorage guard in AppContent component. The sessionStorage-based guard persists across component remounts that occur after navigate(), preventing the auth parameters from being processed multiple times.
+- **ChangedPaths**: frontend/src/App.tsx
+- **AcceptanceCheck**: yes - auth processing guard now survives component remounts, preventing infinite loops
+- **RollbackPlan**: Revert frontend/src/App.tsx to use useRef(false) at line 17 and hasProcessedAuth.current checks at lines 31-35
 
 ## Previous Session Results
 - **Summary**: Fixed authentication middleware inconsistency that could cause "Unauthorized Access" errors
