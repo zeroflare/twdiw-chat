@@ -15,22 +15,8 @@ export function VCVerification() {
   useEffect(() => {
     console.log('VCVerification useEffect - component mounted/updated');
     
-    // Force set a test QR code for debugging
-    const testQrCode = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-    
-    // Restore qrCodeUrl from localStorage on mount
-    const savedQrCodeUrl = localStorage.getItem('vcVerification_qrCodeUrl');
-    console.log('localStorage check - savedQrCodeUrl:', savedQrCodeUrl);
-    console.log('Current qrCodeUrl state:', qrCodeUrl);
-    
-    if (savedQrCodeUrl && !qrCodeUrl) {
-      console.log('Restoring qrCodeUrl from localStorage:', savedQrCodeUrl);
-      setQrCodeUrl(savedQrCodeUrl);
-    } else if (!savedQrCodeUrl && !qrCodeUrl) {
-      console.log('No saved QR code, setting test QR code');
-      setQrCodeUrl(testQrCode);
-      localStorage.setItem('vcVerification_qrCodeUrl', testQrCode);
-    }
+    // Clean up any old test QR codes from localStorage
+    localStorage.removeItem('vcVerification_qrCodeUrl');
     
     return () => {
       console.log('VCVerification useEffect cleanup - component unmounting');
