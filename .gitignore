@@ -166,6 +166,10 @@ dist
 .env*
 !.env.example
 .wrangler/
+wrangler.toml
+!wrangler.toml.example
+wrangler.jsonc
+!wrangler.jsonc.example
 
 # AI-assisted files
 .gemini/

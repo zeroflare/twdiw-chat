@@ -1,0 +1,36 @@
+# Wrangler Configuration Template
+# Copy this file to wrangler.toml and fill in your actual values
+
+name = "twdiw-chat"
+main = "src/index.ts"
+compatibility_date = "2024-10-31"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (public)
+[vars]
+TWDIW_API_URL = "https://verifier-sandbox.wallet.gov.tw"
+TWDIW_API_TOKEN = "YOUR_TWDIW_API_TOKEN"
+OIDC_ISSUER_URL = "https://twdiw-sso.zeroflare.tw"
+OIDC_REDIRECT_URI = "https://your-domain.workers.dev/api/auth/callback"
+TWDIW_API_ENDPOINT = "https://verifier-sandbox.wallet.gov.tw/api"
+TWDIW_REF = "twdiw-chat"
+TLKIO_BASE_URL = "https://tlk.io"
+TLKIO_THEME = "theme--minimal"
+
+# Secrets (set with: wrangler secret put <NAME>)
+# OIDC_CLIENT_ID = "your-client-id"
+# OIDC_CLIENT_SECRET = "your-client-secret"
+# JWT_SECRET = "your-jwt-secret"
+# ENCRYPTION_KEY = "your-encryption-key"
+# ADMIN_TOKEN = "your-admin-token"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "twdiw-chat-db"
+database_id = "your-database-id"
+
+# R2 Storage binding (if needed)
+# [[r2_buckets]]
+# binding = "BUCKET"
+# bucket_name = "twdiw-chat-storage"

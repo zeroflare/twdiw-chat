@@ -1,17 +1,51 @@
 {
-	"name": "twdiw-chat",
-	"compatibility_date": "2025-11-04",
-	"main": "src/index.ts",
-	"vars": {
-		"TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw/api",
-		"TWDIW_API_TOKEN": "O1DhqxTYuxLh43UvyMuitH1xufPGlijb",
-		"TWDIW_REF": "twdiw-chat"
-	},
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "twdiw-chat-db",
-			"database_id": "74cb2311-af44-4491-bf55-3c5dc2d22d55"
-		}
-	]
+  // Top-level configuration
+  "name": "twdiw-chat",
+  "main": "src/index.ts", 
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  
+  // Build configuration for TypeScript
+  "build": {
+    "command": ""
+  },
+  
+  // Scheduled events (Cron jobs)
+  "triggers": {
+    "crons": ["*/5 * * * *"] // Every 5 minutes for session cleanup
+  },
+  
+  // Environment variables for the Worker
+  "vars": {
+    "TWDIW_API_URL": "https://verifier-sandbox.wallet.gov.tw",
+    "TWDIW_API_TOKEN": "O1DhqxTYuxLh43UvyMuitH1xufPGlijb",
+    "OIDC_ISSUER_URL": "https://twdiw-sso.zeroflare.tw",
+    "OIDC_REDIRECT_URI": "https://twdiw-chat.workers.dev/api/auth/callback",
+    "TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw/api",
+    "TWDIW_REF": "twdiw-chat",
+    "TLKIO_BASE_URL": "https://tlk.io",
+    "TLKIO_THEME": "theme--minimal"
+  },
+  
+  // Secrets (set with: wrangler secret put <NAME>)
+  // "OIDC_CLIENT_ID": "bfc9e841-9845-4bc6-96e8-6f1cde6c2cb8",
+  // "OIDC_CLIENT_SECRET": "0498ae88-2f81-4ea5-9123-20eff5185d8c",
+  // "JWT_SECRET": "your-jwt-secret",
+  // "ENCRYPTION_KEY": "your-encryption-key", 
+  // "ADMIN_TOKEN": "your-admin-token",
+  
+  // D1 Database binding - Updated with actual database ID
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "twdiw-chat-db", 
+      "database_id": "74cb2311-af44-4491-bf55-3c5dc2d22d55",
+      "migrations_dir": "migrations"
+    }
+  ]
+  
+  // D1 Migrations Configuration
+  // Migrations are stored in ./migrations directory
+  // To apply migrations locally: wrangler d1 migrations apply twdiw-chat-db --local
+  // To apply migrations to remote: wrangler d1 migrations apply twdiw-chat-db --remote
 }
