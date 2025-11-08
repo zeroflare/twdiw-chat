@@ -1,10 +1,10 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09 - Onboarding Flow Refactor)
-- **Start Time**: 2025-11-09T03:15:53+08:00
-- **Target**: 立即重構用戶 onboarding 流程，解決資料完整性問題
-- **Phase**: Business Logic Refactor - COMPLETED
+## Current Session - COMPLETED (2025-11-09 - Database Design Consistency Fix)
+- **Start Time**: 2025-11-09T03:20:16+08:00
+- **Target**: 統一新用戶資料設計，使用 NULL 值而非預設值
+- **Phase**: Database Design Fix - COMPLETED
 - **Gate**: Low
-- **Method**: 全棧實作用戶設定頁面和導向邏輯
+- **Method**: 修改後端建立邏輯和前端檢查邏輯，統一使用 NULL 設計
 
 ## Phase Results - Current Session (2025-11-09 - Token Storage Timing Fix)
 - **Summary**: Fixed race condition where refreshUser() could be called before localStorage token is fully stored

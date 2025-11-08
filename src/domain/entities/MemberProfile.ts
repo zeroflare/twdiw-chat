@@ -300,7 +300,8 @@ export class MemberProfile {
     }
 
     // Update personal info
-    this.personalInfo = new EncryptedPersonalInfo(gender.trim(), interests.trim());
+    this.gender = gender.trim();
+    this.interests = interests.trim();
     this.version += 1;
     this.updatedAt = new Date();
 

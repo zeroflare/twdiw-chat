@@ -159,7 +159,7 @@ function AppContent() {
               )}
             </div>
           </div>
-        ) : user.gender === 'Unknown' || user.interests === '' ? (
+        ) : !user.gender || !user.interests ? (
           // User setup for incomplete profiles
           <UserSetup />
         ) : (

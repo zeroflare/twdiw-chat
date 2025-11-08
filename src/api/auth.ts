@@ -241,8 +241,8 @@ app.get('/callback', async (c) => {
         member = MemberProfile.create({
           oidcSubjectId: subjectId,
           nickname: claims.name || claims.email || 'User',
-          gender: 'Unknown',
-          interests: ''
+          gender: null,
+          interests: null
         });
         
         console.log('Member object created, attempting save...');
@@ -403,6 +403,8 @@ app.get('/me', authMiddleware(), async (c) => {
       id: member.getId(),
       oidcSubjectId: user.oidcSubjectId,
       nickname: member.getNickname(),
+      gender: member.getGender() || null,
+      interests: member.getInterests() || null,
       status: member.getStatus(),
       rank: member.getDerivedRank(),
       linkedVcDid: member.getLinkedVcDid()

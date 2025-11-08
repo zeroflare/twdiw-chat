@@ -9,6 +9,8 @@ export interface Member {
   id: string;
   oidcSubjectId: string;
   nickname: string;
+  gender?: string | null;
+  interests?: string | null;
   status: 'GENERAL' | 'VERIFIED';
   rank?: 'Gold' | 'Silver' | 'Bronze';
   linkedVcDid?: string;
