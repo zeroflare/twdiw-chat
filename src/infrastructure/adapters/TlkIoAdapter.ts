@@ -32,15 +32,16 @@ export class TlkIoAdapter {
 
   generateForumChannelId(forumId: string): string {
     // Generate deterministic channel ID for forum
-    // Format: forum-{forumId} (truncated to avoid tlk.io limits)
-    const channelId = `forum-${forumId}`.substring(0, 50);
+    // Format: forum-{forumId} (limited to 30 chars for tlk.io)
+    const channelId = `forum-${forumId}`.substring(0, 30);
     return this.sanitizeChannelId(channelId);
   }
 
   generatePrivateChatChannelId(sessionId: string): string {
-    // Generate deterministic channel ID for private chat
-    // Format: match-{sessionId} (truncated to avoid tlk.io limits)
-    const channelId = `match-${sessionId}`.substring(0, 50);
+    // Generate simpler channel ID to avoid tlk.io restrictions
+    // Use only alphanumeric characters and make it shorter
+    const shortId = sessionId.substring(0, 8).replace(/[^a-z0-9]/g, '');
+    const channelId = `chat${shortId}`.substring(0, 20); // Even shorter
     return this.sanitizeChannelId(channelId);
   }
 
@@ -92,9 +93,13 @@ export class TlkIoAdapter {
   }
 
   private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    // Server-side HTML escaping for Cloudflare Workers
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   // Alternative XSS-safe HTML escaping for server-side (Cloudflare Workers)

@@ -356,6 +356,19 @@ export class PrivateChatSession {
     return this.updatedAt;
   }
 
+  public isMemberParticipant(memberId: string): boolean {
+    return this.memberAId === memberId || this.memberBId === memberId;
+  }
+
+  public getOtherMemberId(memberId: string): string | null {
+    if (this.memberAId === memberId) {
+      return this.memberBId;
+    } else if (this.memberBId === memberId) {
+      return this.memberAId;
+    }
+    return null;
+  }
+
   /**
    * Convert aggregate to persistence format.
    * Used by repositories when saving to database.

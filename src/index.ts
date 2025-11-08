@@ -1,88 +1,72 @@
-import { Hono } from 'hono'
-import { v4 as uuidv4 } from 'uuid';
+/**
+ * Main entry point for twdiw-chat Cloudflare Worker
+ * Integrates all API routes and handles scheduled events
+ */
 
-// Define bindings from wrangler.toml
-export type Bindings = {
-  DB: D1Database;
-  TWDIW_API_URL: string;
-  TWDIW_API_TOKEN: string;
-}
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 
-const app = new Hono<{ Bindings: Bindings }>()
+// Import API routes
+import authRoutes from './api/auth';
+import forumsRoutes from './api/forums';
+import vcVerificationRoutes from './api/vc-verification';
+import chatRoutes from './api/chat';
+import adminRoutes from './api/admin';
+import devRoutes from './api/dev';
 
+// Import scheduled worker
+import sessionCleanup from './scheduled/session-cleanup';
+
+// Create main app
+const app = new Hono();
+
+// CORS middleware
+app.use('*', cors({
+  origin: ['http://localhost:3000', 'https://twdiw-chat.pages.dev'],
+  credentials: true,
+}));
+
+// Health check endpoint
 app.get('/', (c) => {
-  return c.text('Hello from Hono on Cloudflare Workers!')
-})
-
-// 1. Endpoint to initiate the verification process
-app.post('/verify/initiate', async (c) => {
-  try {
-    const transactionId = uuidv4();
-    const apiUrl = c.env.TWDIW_API_URL;
-    const apiToken = c.env.TWDIW_API_TOKEN;
-
-    const ref = "27950876_vp_swaggerui_test_2"; // Placeholder
-
-    const fullUrl = `${apiUrl}/api/oidvp/qrcode?ref=${ref}&transactionId=${transactionId}`;
-
-    const response = await fetch(fullUrl, {
-      method: 'GET',
-      headers: {
-        'Access-Token': apiToken,
-      },
-    });
-
-    if (!response.ok) {
-      console.error('Failed to call TWDIW API', await response.text());
-      return c.json({ error: 'Failed to initiate verification' }, { status: 500 });
+  const isDev = c.env.DEV_MODE === 'true' || c.env.NODE_ENV === 'development';
+  
+  return c.json({
+    message: '三人行必有我師論壇 API',
+    version: '1.0.0',
+    mode: isDev ? 'development' : 'production',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: '/api/auth/*',
+      forums: '/api/forums/*',
+      vcVerification: '/api/vc/verify/*',
+      chat: '/api/chat/*',
+      admin: '/api/admin/*',
+      ...(isDev && { dev: '/api/dev/*' })
     }
-
-    const data = await response.json() as { authUri: string, qrcodeImage: string, transactionId: string };
-
-    return c.json({ 
-      transactionId: data.transactionId, 
-      authUri: data.authUri 
-    });
-
-  } catch (error) {
-    console.error('Error initiating verification:', error);
-    return c.json({ error: 'An internal error occurred' }, { status: 500 });
-  }
+  });
 });
 
-// 2. Endpoint for the frontend to poll for the verification result
-app.get('/verify/status/:transactionId', async (c) => {
-  const { transactionId } = c.req.param();
-  const apiUrl = c.env.TWDIW_API_URL;
-  const apiToken = c.env.TWDIW_API_TOKEN;
+// Mount API routes
+app.route('/api/auth', authRoutes);
+app.route('/api/forums', forumsRoutes);
+app.route('/api/vc/verify', vcVerificationRoutes);
+app.route('/api/chat', chatRoutes);
+app.route('/api/admin', adminRoutes);
+app.route('/api/dev', devRoutes);
 
-  try {
-    const response = await fetch(`${apiUrl}/api/oidvp/result`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Token': apiToken,
-      },
-      body: JSON.stringify({ transactionId }),
-    });
-
-    if (response.status === 200) {
-      const data = await response.json();
-      return c.json({ status: 'success', data });
-    }
-
-    if (response.status === 400) {
-      return c.json({ status: 'pending' });
-    }
-
-    console.error('Failed to poll TWDIW result API', await response.text());
-    return c.json({ error: 'Failed to get verification status' }, { status: response.status });
-
-  } catch (error) {
-    console.error('Error polling for status:', error);
-    return c.json({ error: 'An internal error occurred' }, { status: 500 });
-  }
+// 404 handler
+app.notFound((c) => {
+  return c.json({ error: 'Not Found' }, 404);
 });
 
+// Error handler
+app.onError((err, c) => {
+  console.error('Unhandled error:', err);
+  return c.json({ error: 'Internal Server Error' }, 500);
+});
 
-export default app
+// Export for Cloudflare Workers
+export default {
+  fetch: app.fetch,
+  scheduled: sessionCleanup.scheduled,
+};

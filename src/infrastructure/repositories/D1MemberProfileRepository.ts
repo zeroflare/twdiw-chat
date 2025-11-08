@@ -413,8 +413,8 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
     updated_at: number;
   }): Promise<MemberProfile> {
     // Decrypt sensitive fields
-    const gender = row.gender ? await this.encryptionService.decrypt(row.gender) : undefined;
-    const interests = row.interests
+    const gender = row.gender && row.gender !== 'null' ? await this.encryptionService.decrypt(row.gender) : undefined;
+    const interests = row.interests && row.interests !== 'null'
       ? await this.encryptionService.decrypt(row.interests)
       : undefined;
 

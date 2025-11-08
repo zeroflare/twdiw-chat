@@ -34,8 +34,16 @@ export interface VerificationResult {
   error?: string;
 }
 
+export interface MockUser {
+  id: string;
+  nickname: string;
+  status: 'GENERAL' | 'VERIFIED';
+  rank?: 'Gold' | 'Silver' | 'Bronze';
+}
+
 class ApiService {
   private baseUrl = '/api';
+  private isDev = import.meta.env.DEV || window.location.hostname === 'localhost';
 
   private async request<T>(
     endpoint: string,
@@ -63,8 +71,37 @@ class ApiService {
     }
   }
 
+  // Development mode helpers
+  get isDevMode() {
+    return this.isDev;
+  }
+
+  // Development: Get mock users
+  async getMockUsers() {
+    if (!this.isDev) return { error: 'Not in development mode' };
+    return this.request<{ users: MockUser[] }>('/dev/users');
+  }
+
+  // Development: Mock login
+  async mockLogin(userId: string) {
+    if (!this.isDev) return { error: 'Not in development mode' };
+    return this.request<{ user: Member; sessionToken: string }>(`/dev/login/${userId}`, {
+      method: 'POST',
+    });
+  }
+
+  // Development: Seed test data
+  async seedTestData() {
+    if (!this.isDev) return { error: 'Not in development mode' };
+    return this.request('/dev/seed-data', { method: 'POST' });
+  }
+
   // Authentication
   async login() {
+    if (this.isDev) {
+      // In development, show mock login options instead
+      return { error: 'Use mock login in development mode' };
+    }
     return this.request<{ authUrl: string }>('/auth/login');
   }
 
@@ -91,6 +128,20 @@ class ApiService {
     return this.request<VerificationResult>(`/vc/verify/poll/${transactionId}`);
   }
 
+  // Development: Mock VC verification
+  async mockVCVerification(rank: 'Gold' | 'Silver' | 'Bronze' = 'Gold') {
+    if (!this.isDev) return { error: 'Not in development mode' };
+    return this.request<VerificationResult>('/dev/vc/mock-verify', {
+      method: 'POST',
+      body: JSON.stringify({ rank }),
+    });
+  }
+
+  async completeMockVCVerification(transactionId: string, rank: 'Gold' | 'Silver' | 'Bronze' = 'Gold') {
+    if (!this.isDev) return { error: 'Not in development mode' };
+    return this.request<VerificationResult>(`/dev/vc/mock-complete/${transactionId}?rank=${rank}`);
+  }
+
   // Forums
   async getForums() {
     return this.request<Forum[]>('/forums');
@@ -114,7 +165,7 @@ class ApiService {
     return this.request<{
       sessionId: string;
       message: string;
-    }>('/matching/daily', { method: 'POST' });
+    }>('/chat/match', { method: 'POST' });
   }
 
   async joinPrivateChat(sessionId: string) {

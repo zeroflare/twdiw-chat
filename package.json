@@ -1,30 +1,50 @@
 {
   "name": "twdiw-chat",
   "version": "1.0.0",
-  "description": "A token-gated chat application based on Hono and Cloudflare Workers.",
+  "description": "三人行必有我師論壇 - Token-gated chat application with Verifiable Credentials",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "wrangler dev src/index.ts",
-    "deploy": "wrangler deploy --minify src/index.ts",
-    "test": "vitest"
+    "dev": "npx wrangler dev --local",
+    "dev:remote": "npx wrangler dev",
+    "deploy": "npx wrangler deploy",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "db:create": "npx wrangler d1 create twdiw-chat-db",
+    "db:migrate": "npx wrangler d1 migrations apply twdiw-chat-db --local",
+    "db:migrate:remote": "npx wrangler d1 migrations apply twdiw-chat-db --remote",
+    "db:reset": "npx wrangler d1 migrations apply twdiw-chat-db --local --force",
+    "db:query": "npx wrangler d1 execute twdiw-chat-db --local",
+    "setup:dev": "./dev-setup.sh",
+    "seed:data": "curl -X POST http://localhost:8787/api/dev/seed-data",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:install": "cd frontend && npm install",
+    "dev:full": "concurrently \"npm run dev\" \"npm run frontend:dev\"",
+    "build:all": "npm run frontend:build && npx wrangler deploy"
   },
   "keywords": [
-    "hono",
-    "cloudflare-workers",
     "verifiable-credentials",
-    "oidc"
+    "cloudflare-workers",
+    "chat",
+    "forum",
+    "oidc",
+    "web3"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Amazon Q Developer",
+  "license": "MIT",
   "dependencies": {
-    "hono": "^4.4.6",
+    "hono": "^4.10.4",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240512.0",
     "@types/uuid": "^10.0.0",
+    "concurrently": "^8.2.2",
     "typescript": "^5.4.5",
     "vitest": "^1.6.0",
-    "wrangler": "^3.57.0"
+    "wrangler": "^4.46.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

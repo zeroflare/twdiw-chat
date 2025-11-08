@@ -1,12 +1,16 @@
 {
-  "name": "twdiw-chat",
-  "compatibility_date": "2025-11-04",
-  "main": "src/index.js",
-  "assets": {
-    "directory": "./public"
-  },
-  "vars": {
-    "SANDBOX_BASE_URL": "https://verifier-sandbox.wallet.gov.tw",
-    "SANDBOX_TOKEN": "O1DhqxTYuxLh43UvyMuitH1xufPGlijb"
-  }
+	"name": "twdiw-chat",
+	"compatibility_date": "2025-11-04",
+	"main": "src/index.ts",
+	"vars": {
+		"SANDBOX_BASE_URL": "https://verifier-sandbox.wallet.gov.tw",
+		"SANDBOX_TOKEN": "O1DhqxTYuxLh43UvyMuitH1xufPGlijb"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "twdiw-chat-db",
+			"database_id": "74cb2311-af44-4491-bf55-3c5dc2d22d55"
+		}
+	]
 }

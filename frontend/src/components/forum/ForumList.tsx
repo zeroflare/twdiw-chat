@@ -35,7 +35,9 @@ export function ForumList() {
       if (response.error) {
         throw new Error(response.error);
       }
-      setForums(response.data || []);
+      // Handle nested forums structure from API
+      const forumsData = response.data?.forums || response.data || [];
+      setForums(Array.isArray(forumsData) ? forumsData : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : '載入論壇失敗');
     } finally {

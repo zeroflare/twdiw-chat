@@ -259,6 +259,43 @@ export class D1PrivateChatSessionRepository implements IPrivateChatSessionReposi
     }
   }
 
+  async findActiveSessionByMemberId(memberId: string): Promise<PrivateChatSession | null> {
+    try {
+      const row = await this.db
+        .prepare(
+          `SELECT id, member_a_id, member_b_id, tlk_channel_id, type,
+                  status, version, created_at, updated_at, expires_at
+           FROM private_chat_sessions
+           WHERE (member_a_id = ? OR member_b_id = ?) 
+           AND status = 'ACTIVE' 
+           AND expires_at > ?
+           ORDER BY created_at DESC
+           LIMIT 1`
+        )
+        .bind(memberId, memberId, Date.now())
+        .first<{
+          id: string;
+          member_a_id: string;
+          member_b_id: string;
+          tlk_channel_id: string;
+          type: string;
+          status: string;
+          version: number;
+          created_at: number;
+          updated_at: number;
+          expires_at: number;
+        }>();
+
+      if (!row) {
+        return null;
+      }
+
+      return this.reconstitute(row);
+    } catch (error) {
+      throw new RepositoryException('Failed to find active session by member ID', error);
+    }
+  }
+
   async findActiveSessionBetweenMembers(
     memberIdA: string,
     memberIdB: string

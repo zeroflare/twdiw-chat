@@ -8,6 +8,7 @@ import { setCookie, deleteCookie } from 'hono/cookie';
 import { OIDCService } from '../infrastructure/auth/OIDCService';
 import { JWTService } from '../infrastructure/auth/JWTService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
+import { EncryptionService } from '../infrastructure/security/EncryptionService';
 import { MemberProfile } from '../domain/entities/MemberProfile';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 
@@ -215,7 +216,8 @@ app.get('/me', authMiddleware(), async (c) => {
     const user = c.get('user');
 
     // Get fresh member data
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, c.env.ENCRYPTION_KEY);
+    const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
     const member = await memberRepo.findById(user.memberId);
 
     if (!member) {

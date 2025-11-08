@@ -1,9 +1,16 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { LoginButton } from './components/auth/LoginButton';
 import { UserProfile } from './components/auth/UserProfile';
 import { VCVerification } from './components/vc/VCVerification';
 import { ForumList } from './components/forum/ForumList';
+import { DevLogin } from './components/auth/DevLogin';
+import { TestButton } from './components/TestButton';
+import { DailyMatching } from './components/matching/DailyMatching';
+import { ChatSession } from './components/chat/ChatSession';
+import { TlkTest } from './components/chat/TlkTest';
+import { api } from './services/api';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -29,14 +36,25 @@ function AppContent() {
               <h1 className="text-2xl font-bold text-gray-900">
                 三人行必有我師論壇
               </h1>
+              {api.isDevMode && (
+                <span className="ml-3 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                  開發模式
+                </span>
+              )}
             </div>
-            <LoginButton />
+            <div className="flex items-center space-x-4">
+              <TestButton />
+              <LoginButton />
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Development Mode Login */}
+        {api.isDevMode && !user && <DevLogin />}
+        
         {!user ? (
           // Landing page for non-authenticated users
           <div className="text-center py-12">
@@ -48,10 +66,18 @@ function AppContent() {
             </p>
             <div className="bg-white rounded-lg shadow p-8 max-w-md mx-auto">
               <h3 className="text-lg font-semibold mb-4">開始使用</h3>
-              <p className="text-gray-600 mb-6">
-                請先登入以存取論壇功能
-              </p>
-              <LoginButton />
+              {api.isDevMode ? (
+                <p className="text-gray-600 mb-6">
+                  開發模式：請使用上方的 Mock 登入功能
+                </p>
+              ) : (
+                <>
+                  <p className="text-gray-600 mb-6">
+                    請先登入以存取論壇功能
+                  </p>
+                  <LoginButton />
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -61,27 +87,12 @@ function AppContent() {
             <div className="lg:col-span-1 space-y-6">
               <UserProfile />
               {user.status === 'GENERAL' && <VCVerification />}
+              <DailyMatching />
             </div>
 
             {/* Right column - Forums and features */}
             <div className="lg:col-span-2 space-y-6">
               <ForumList />
-              
-              {/* Daily Match Feature */}
-              {user.status === 'VERIFIED' && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-xl font-semibold mb-4">每日配對</h2>
-                  <p className="text-gray-600 mb-4">
-                    與其他已驗證會員進行隨機配對，開始私人對話
-                  </p>
-                  <button className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-                    尋找配對
-                  </button>
-                  <p className="text-xs text-gray-500 mt-2">
-                    每日限制一次配對機會
-                  </p>
-                </div>
-              )}
               
               {/* Feature showcase for general members */}
               {user.status === 'GENERAL' && (
@@ -124,6 +135,11 @@ function AppContent() {
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-500">
             © 2025 三人行必有我師論壇. 使用 Cloudflare Workers 和 Verifiable Credentials 技術構建.
+            {api.isDevMode && (
+              <span className="block mt-1 text-yellow-600">
+                🚧 開發模式 - Mock 認證已啟用
+              </span>
+            )}
           </p>
         </div>
       </footer>
@@ -133,9 +149,15 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<AppContent />} />
+          <Route path="/chat/session/:sessionId" element={<ChatSession />} />
+          <Route path="/test-tlk" element={<TlkTest />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
 }
 
