@@ -68,7 +68,7 @@ app.post('/start', authMiddleware(), async (c) => {
         authUri: `https://mock-wallet.example.com/verify?tx=${mockTransactionId}`,
         status: 'pending' as const,
         pollInterval: 2000,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+        expiresAt: Date.now() + 10 * 60 * 1000
       };
 
       // Store mock session
@@ -78,7 +78,7 @@ app.post('/start', authMiddleware(), async (c) => {
         status: 'pending',
         qrCodeUrl: mockResult.qrCodeUrl,
         authUri: mockResult.authUri,
-        expiresAt: mockResult.expiresAt.getTime()
+        expiresAt: mockResult.expiresAt
       });
 
       return c.json(mockResult);
@@ -95,7 +95,7 @@ app.post('/start', authMiddleware(), async (c) => {
       status: 'pending',
       qrCodeUrl: result.qrCodeUrl,
       authUri: result.authUri,
-      expiresAt: result.expiresAt?.getTime() || Date.now() + 10 * 60 * 1000
+      expiresAt: result.expiresAt || Date.now() + 10 * 60 * 1000
     });
 
     return c.json({

@@ -41,17 +41,13 @@ export class VCVerificationService implements RankVerificationService {
 
   async initiateVerification(request: VerificationRequest): Promise<VerificationResult> {
     try {
-      const response = await fetch(`${this.apiEndpoint}/oidvp/qrcode?ref=${this.ref}`, {
-        method: 'POST',
+      const transactionId = `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const response = await fetch(`${this.apiEndpoint}/api/oidvp/qrcode?ref=${this.ref}&transactionId=${transactionId}`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${this.apiToken}`,
-          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          memberId: request.memberId,
-          timestamp: Date.now()
-        })
+        }
       });
 
       if (!response.ok) {
@@ -67,7 +63,7 @@ export class VCVerificationService implements RankVerificationService {
         authUri: data.authUri,
         status: VerificationStatus.PENDING,
         pollInterval: data.pollInterval || 5000,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+        expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes (timestamp)
       };
     } catch (error) {
       console.error('VC verification initiation failed:', error);

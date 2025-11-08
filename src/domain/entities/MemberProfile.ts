@@ -303,7 +303,7 @@ export class MemberProfile {
     this.gender = gender.trim();
     this.interests = interests.trim();
     this.version += 1;
-    this.updatedAt = new Date();
+    this.updatedAt = Date.now();
 
     // Add domain event for profile update
     this.addDomainEvent(new MemberProfileUpdatedEvent(this.id, this.oidcSubjectId));

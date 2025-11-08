@@ -98,31 +98,19 @@ app.get('/callback', async (c) => {
       return c.redirect(`${frontendUrl}/?auth=error&type=missing_params`);
     }
 
-    // Retrieve stored PKCE data with KV fallback
-    let storedData = getCookie(c, 'oidc_state');
-    const sessionId = getCookie(c, 'oidc_session');
+    // Retrieve stored PKCE data from KV using URL state parameter
+    let storedData = null;
     
-    console.log('Cookie check:', { 
-      hasOidcState: !!storedData, 
-      hasSessionId: !!sessionId,
-      sessionId: sessionId,
+    console.log('Looking for OIDC state in KV:', { 
+      state: state,
       hasKV: !!c.env.KV
     });
     
-    // Fallback: Try KV if cookie is missing
-    if (!storedData && sessionId && c.env.KV) {
-      storedData = await c.env.KV.get(`oidc_state:${sessionId}`);
-      console.log('Retrieved from KV fallback:', { 
-        hasData: !!storedData,
-        kvKey: `oidc_state:${sessionId}`
-      });
-    }
-    
-    // Ultimate fallback: Use URL state parameter to lookup in KV
-    if (!storedData && state && c.env.KV) {
+    // Get stored data from KV using URL state parameter
+    if (state && c.env.KV) {
       const urlStateKey = `url_state:${state}`;
       storedData = await c.env.KV.get(urlStateKey);
-      console.log('Retrieved from URL state fallback:', { 
+      console.log('Retrieved from KV:', { 
         hasData: !!storedData,
         kvKey: urlStateKey
       });
