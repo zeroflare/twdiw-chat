@@ -34,11 +34,31 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
     try {
       const data = profile.toPersistence();
 
-      // Encrypt sensitive fields
-      const encryptedGender = data.gender ? await this.encryptionService.encrypt(data.gender) : null;
-      const encryptedInterests = data.interests
-        ? await this.encryptionService.encrypt(data.interests)
-        : null;
+      // Enhanced diagnostics: Log data being saved (without PII in production)
+      console.log('[D1MemberProfileRepository] Attempting to save member profile', {
+        id: data.id,
+        status: data.status,
+        hasGender: !!data.gender,
+        hasInterests: !!data.interests,
+        version: data.version,
+      });
+
+      // Encrypt sensitive fields with error handling
+      let encryptedGender: string | null = null;
+      let encryptedInterests: string | null = null;
+
+      try {
+        encryptedGender = data.gender ? await this.encryptionService.encrypt(data.gender) : null;
+        encryptedInterests = data.interests
+          ? await this.encryptionService.encrypt(data.interests)
+          : null;
+      } catch (encryptError) {
+        console.error('[D1MemberProfileRepository] Encryption failed:', encryptError);
+        throw new RepositoryException(
+          'Failed to encrypt sensitive fields',
+          encryptError instanceof Error ? encryptError : undefined
+        );
+      }
 
       // Check if profile exists
       const existing = await this.db
@@ -46,9 +66,20 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
         .bind(data.id)
         .first<{ version: number }>();
 
+      console.log('[D1MemberProfileRepository] Profile existence check:', {
+        id: data.id,
+        exists: !!existing,
+        existingVersion: existing?.version,
+      });
+
       if (existing) {
         // Update existing profile with optimistic locking
         if (existing.version !== data.version - 1) {
+          console.error('[D1MemberProfileRepository] Optimistic lock failure on update', {
+            id: data.id,
+            expectedVersion: data.version - 1,
+            actualVersion: existing.version,
+          });
           throw new OptimisticLockException(
             'MemberProfile',
             data.id,
@@ -56,6 +87,11 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
             existing.version
           );
         }
+
+        console.log('[D1MemberProfileRepository] Updating existing profile', {
+          id: data.id,
+          version: data.version,
+        });
 
         const result = await this.db
           .prepare(
@@ -87,8 +123,18 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
           .run();
 
         if (!result.success) {
+          console.error('[D1MemberProfileRepository] UPDATE failed', {
+            id: data.id,
+            error: result.error,
+            meta: result.meta,
+          });
           throw new RepositoryException(`Failed to update member profile: ${result.error}`);
         }
+
+        console.log('[D1MemberProfileRepository] UPDATE successful', {
+          id: data.id,
+          changedRows: result.meta.changes,
+        });
 
         // Check if any rows were updated (optimistic lock check)
         if (result.meta.changes === 0) {
@@ -97,6 +143,12 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
             .prepare('SELECT version FROM member_profiles WHERE id = ?')
             .bind(data.id)
             .first<{ version: number }>();
+
+          console.error('[D1MemberProfileRepository] No rows updated - version mismatch', {
+            id: data.id,
+            expectedVersion: data.version - 1,
+            currentVersion: current?.version,
+          });
 
           throw new OptimisticLockException(
             'MemberProfile',
@@ -107,6 +159,18 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
         }
       } else {
         // Insert new profile
+        console.log('[D1MemberProfileRepository] Inserting new profile', {
+          id: data.id,
+          oidcSubjectId: data.oidcSubjectId,
+          nickname: data.nickname,
+          status: data.status,
+          version: data.version,
+          hasGender: !!encryptedGender,
+          hasInterests: !!encryptedInterests,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        });
+
         try {
           const result = await this.db
             .prepare(
@@ -131,12 +195,31 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
             .run();
 
           if (!result.success) {
+            console.error('[D1MemberProfileRepository] INSERT failed', {
+              id: data.id,
+              error: result.error,
+              meta: result.meta,
+            });
             throw new RepositoryException(`Failed to insert member profile: ${result.error}`);
           }
+
+          console.log('[D1MemberProfileRepository] INSERT successful', {
+            id: data.id,
+            changedRows: result.meta.changes,
+          });
         } catch (error: any) {
+          console.error('[D1MemberProfileRepository] INSERT exception caught', {
+            errorMessage: error.message,
+            errorName: error.name,
+            oidcSubjectId: data.oidcSubjectId,
+          });
+
           // Check for unique constraint violations
           if (error.message && error.message.includes('UNIQUE constraint failed')) {
             if (error.message.includes('oidc_subject_id')) {
+              console.error('[D1MemberProfileRepository] UNIQUE constraint violation on oidc_subject_id', {
+                oidcSubjectId: data.oidcSubjectId,
+              });
               throw new UniqueConstraintViolationException(
                 'MemberProfile',
                 'oidcSubjectId',
@@ -144,6 +227,9 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
                 error
               );
             } else if (error.message.includes('linked_vc_did')) {
+              console.error('[D1MemberProfileRepository] UNIQUE constraint violation on linked_vc_did', {
+                linkedVcDid: data.linkedVcDid,
+              });
               throw new UniqueConstraintViolationException(
                 'MemberProfile',
                 'linkedVcDid',
@@ -156,9 +242,22 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
         }
       }
 
+      console.log('[D1MemberProfileRepository] Save operation completed successfully', {
+        id: data.id,
+      });
+
       // Clear domain events after successful save (do not publish)
       profile.clearDomainEvents();
     } catch (error) {
+      // Log the full error context before re-throwing
+      console.error('[D1MemberProfileRepository] Save operation failed', {
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        isOptimisticLock: error instanceof OptimisticLockException,
+        isUniqueConstraint: error instanceof UniqueConstraintViolationException,
+        isRepositoryException: error instanceof RepositoryException,
+      });
+
       if (
         error instanceof OptimisticLockException ||
         error instanceof UniqueConstraintViolationException ||

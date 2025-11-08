@@ -43,6 +43,7 @@
   // "JWT_SECRET": "your-jwt-secret",
   // "ENCRYPTION_KEY": "your-encryption-key", 
   // "ADMIN_TOKEN": "your-admin-token",
+  // "COOKIE_SIGNING_KEY": "your-cookie-signing-key", // For OIDC state cookie HMAC protection
   
   // D1 Database binding - Updated with actual database ID
   "d1_databases": [
@@ -51,6 +52,15 @@
       "database_name": "twdiw-chat-db", 
       "database_id": "74cb2311-af44-4491-bf55-3c5dc2d22d55",
       "migrations_dir": "migrations"
+    }
+  ],
+  
+  // KV namespace for session storage
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "8fdc46912c334c8f98a88c9f9c7ccee5",
+      "preview_id": "5bfec62b48f04ca88f2681d2df1ebbcd"
     }
   ]
   

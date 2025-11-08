@@ -57,18 +57,48 @@ app.get('/login', async (c) => {
     });
     const signedValue = await cookieSigner.sign(cookieValue);
 
+    // Store in both cookie AND KV as fallback
+    const sessionId = crypto.randomUUID();
+    
+    console.log('Setting cookies:', {
+      sessionId,
+      signedValueLength: signedValue.length,
+      cookieValue: signedValue.substring(0, 50) + '...'
+    });
+    
     // Store signed PKCE verifier and state in secure cookie (short-lived)
     setCookie(c, 'oidc_state', signedValue, {
       httpOnly: true,
       secure: true,
       sameSite: 'Lax',
-      maxAge: 600, // 10 minutes
-      path: '/api/auth'
+      maxAge: 1200, // 20 minutes
+      path: '/',
+      domain: undefined
     });
+    
+    // Fallback: Store in KV with session ID in cookie
+    setCookie(c, 'oidc_session', sessionId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Lax',
+      maxAge: 1200,
+      path: '/'
+    });
+    
+    // Store state data in KV with URL-accessible key (ultimate fallback)
+    const urlStateKey = `url_state:${authRequest.state}`;
+    if (c.env.KV) {
+      await c.env.KV.put(urlStateKey, signedValue, { expirationTtl: 1200 });
+      console.log('Stored in KV with URL key:', urlStateKey);
+    } else {
+      console.log('KV not available');
+    }
 
     return c.json({
       authUrl: authRequest.authUrl,
-      message: 'Redirect to authUrl to complete login'
+      message: 'Redirect to authUrl to complete login',
+      // Debug: Include state for verification
+      debugState: authRequest.state
     });
 
   } catch (error) {
@@ -94,8 +124,36 @@ app.get('/callback', async (c) => {
       return c.json({ error: 'Missing authorization code or state' }, 400);
     }
 
-    // Retrieve stored PKCE data
-    const storedData = getCookie(c, 'oidc_state');
+    // Retrieve stored PKCE data with KV fallback
+    let storedData = getCookie(c, 'oidc_state');
+    const sessionId = getCookie(c, 'oidc_session');
+    
+    console.log('Cookie check:', { 
+      hasOidcState: !!storedData, 
+      hasSessionId: !!sessionId,
+      sessionId: sessionId,
+      hasKV: !!c.env.KV
+    });
+    
+    // Fallback: Try KV if cookie is missing
+    if (!storedData && sessionId && c.env.KV) {
+      storedData = await c.env.KV.get(`oidc_state:${sessionId}`);
+      console.log('Retrieved from KV fallback:', { 
+        hasData: !!storedData,
+        kvKey: `oidc_state:${sessionId}`
+      });
+    }
+    
+    // Ultimate fallback: Use URL state parameter to lookup in KV
+    if (!storedData && state && c.env.KV) {
+      const urlStateKey = `url_state:${state}`;
+      storedData = await c.env.KV.get(urlStateKey);
+      console.log('Retrieved from URL state fallback:', { 
+        hasData: !!storedData,
+        kvKey: urlStateKey
+      });
+    }
+    
     console.log('Stored OIDC data:', { hasStoredData: !!storedData });
 
     if (!storedData) {
@@ -121,8 +179,26 @@ app.get('/callback', async (c) => {
 
     const { state: storedState, codeVerifier } = parsedData;
 
-    // Clear the temporary cookie
-    deleteCookie(c, 'oidc_state', { path: '/api/auth' });
+    // Debug: Log state comparison
+    console.log('State comparison:', { 
+      urlState: state, 
+      cookieState: storedState, 
+      match: state === storedState 
+    });
+
+    // Clear the temporary cookies and KV
+    deleteCookie(c, 'oidc_state', { path: '/' });
+    deleteCookie(c, 'oidc_session', { path: '/' });
+    
+    // Clean up KV if used (reuse sessionId from above)
+    if (sessionId && c.env.KV) {
+      await c.env.KV.delete(`oidc_state:${sessionId}`);
+    }
+    
+    // Clean up URL-based KV entry
+    if (state && c.env.KV) {
+      await c.env.KV.delete(`url_state:${state}`);
+    }
 
     const oidcService = new OIDCService(c.env);
     
@@ -134,7 +210,10 @@ app.get('/callback', async (c) => {
     // Verify ID token
     console.log('Verifying ID token...');
     const claims = await oidcService.verifyIDToken(tokens.id_token);
-    console.log('ID token verified, claims:', { sub: claims.sub, name: claims.name });
+    console.log('ID token verified, claims:', { name: claims.name, email: claims.email });
+
+    // Use email as subject ID since SSO server doesn't provide standard 'sub' field
+    const subjectId = claims.email || claims.sub || 'unknown';
 
     // Find or create member profile
     console.log('Setting up database...');
@@ -142,26 +221,39 @@ app.get('/callback', async (c) => {
     const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
     
     console.log('Looking for existing member...');
-    let member = await memberRepo.findByOidcSubjectId(claims.sub);
+    let member = await memberRepo.findByOidcSubjectId(subjectId);
 
     if (!member) {
       console.log('Creating new member...');
-      // Create new member profile
-      member = MemberProfile.create({
-        oidcSubjectId: claims.sub,
+      console.log('Member data to create:', {
+        oidcSubjectId: subjectId,
         nickname: claims.name || claims.email || 'User',
-        gender: 'Unknown',
-        interests: ''
+        email: claims.email
       });
-      await memberRepo.save(member);
-      console.log('New member created');
+      
+      try {
+        // Create new member profile
+        member = MemberProfile.create({
+          oidcSubjectId: subjectId,
+          nickname: claims.name || claims.email || 'User',
+          gender: 'Unknown',
+          interests: ''
+        });
+        
+        console.log('Member object created, attempting save...');
+        await memberRepo.save(member);
+        console.log('New member created successfully');
+      } catch (saveError) {
+        console.error('Member save error details:', saveError);
+        throw saveError;
+      }
     } else {
       console.log('Existing member found');
     }
 
     // Create session token
     console.log('Creating session token...');
-    const sessionToken = await oidcService.createSessionToken(claims.sub, member.getId());
+    const sessionToken = await oidcService.createSessionToken(subjectId, member.getId());
 
     // Set secure session cookie
     setCookie(c, 'session', sessionToken, {

@@ -8,6 +8,12 @@ compatibility_flags = ["nodejs_compat"]
 [build]
 command = ""
 
+# KV namespace for session storage
+[[kv_namespaces]]
+binding = "KV"
+id = "8fdc46912c334c8f98a88c9f9c7ccee5"
+preview_id = "5bfec62b48f04ca88f2681d2df1ebbcd"
+
 # Scheduled events (Cron jobs)
 [triggers]
 crons = ["*/5 * * * *"] # Every 5 minutes for session cleanup
