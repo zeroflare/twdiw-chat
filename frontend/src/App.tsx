@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { LoginButton } from './components/auth/LoginButton';
 import { UserProfile } from './components/auth/UserProfile';
+import { UserSetup } from './components/auth/UserSetup';
 import { VCVerification } from './components/vc/VCVerification';
 import { ForumList } from './components/forum/ForumList';
 import { DevLogin } from './components/auth/DevLogin';
@@ -158,6 +159,9 @@ function AppContent() {
               )}
             </div>
           </div>
+        ) : user.gender === 'Unknown' || user.interests === '' ? (
+          // User setup for incomplete profiles
+          <UserSetup />
         ) : (
           // Dashboard for authenticated users
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

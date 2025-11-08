@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { DomainEvent } from '../events/DomainEvent';
 import { MemberVerified } from '../events/MemberVerified';
+import { MemberProfileUpdatedEvent } from '../events/MemberProfileUpdated';
 
 /**
  * Enumeration of possible member verification statuses.
@@ -277,6 +278,34 @@ export class MemberProfile {
       default:
         return false;
     }
+  }
+
+  /**
+   * Update member profile information (gender and interests).
+   * 
+   * @param profileData - Object containing gender and interests
+   * @throws Error if parameters are invalid
+   */
+  public updateProfile(profileData: { gender: string; interests: string }): void {
+    const { gender, interests } = profileData;
+
+    // Validate gender
+    if (!gender || gender.trim() === '') {
+      throw new Error('Gender cannot be empty');
+    }
+
+    // Validate interests
+    if (!interests || interests.trim() === '') {
+      throw new Error('Interests cannot be empty');
+    }
+
+    // Update personal info
+    this.personalInfo = new EncryptedPersonalInfo(gender.trim(), interests.trim());
+    this.version += 1;
+    this.updatedAt = new Date();
+
+    // Add domain event for profile update
+    this.addDomainEvent(new MemberProfileUpdatedEvent(this.id, this.oidcSubjectId));
   }
 
   /**

@@ -283,6 +283,46 @@ app.get('/callback', async (c) => {
   }
 });
 
+// PUT /api/auth/profile - Update user profile
+app.put('/profile', authMiddleware(), async (c) => {
+  try {
+    const user = c.get('user');
+    const { gender, interests } = await c.req.json();
+
+    // Validate input
+    if (!gender || !interests || typeof gender !== 'string' || typeof interests !== 'string') {
+      return c.json({ error: 'Invalid gender or interests' }, 400);
+    }
+
+    // Update member profile
+    const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    
+    const member = await memberRepo.findById(user.memberId);
+    if (!member) {
+      return c.json({ error: 'Member not found' }, 404);
+    }
+
+    // Update profile data
+    member.updateProfile({ gender, interests });
+    await memberRepo.save(member);
+
+    return c.json({
+      message: 'Profile updated successfully',
+      member: {
+        id: member.getId(),
+        nickname: member.getNickname(),
+        status: member.getStatus(),
+        rank: member.getDerivedRank(),
+        oidcSubjectId: member.getOidcSubjectId()
+      }
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    return c.json({ error: 'Profile update failed' }, 500);
+  }
+});
+
 // POST /api/auth/refresh - Refresh JWT token
 app.post('/refresh', authMiddleware(), async (c) => {
   try {

@@ -121,6 +121,13 @@ class ApiService {
     return this.request<Member>('/auth/me');
   }
 
+  async updateProfile(data: { gender: string; interests: string }) {
+    return this.request<Member>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async refreshToken() {
     return this.request('/auth/refresh', { method: 'POST' });
   }
