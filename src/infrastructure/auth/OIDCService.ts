@@ -193,8 +193,22 @@ export class OIDCService {
   }
 
   private base64URLDecode(data: string): string {
+    // Convert base64url to standard base64
     const base64 = data.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
-    return atob(padded);
+
+    // Decode base64 to binary string
+    const binaryString = atob(padded);
+
+    // Convert binary string to Uint8Array
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Decode UTF-8 bytes to string using TextDecoder
+    // This properly handles multi-byte UTF-8 characters like Chinese characters
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(bytes);
   }
 }

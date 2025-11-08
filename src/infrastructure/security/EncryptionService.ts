@@ -9,15 +9,12 @@
  * - Random IV generation for each encryption
  * - Base64 encoding for storage
  * - Constant-time comparison for authentication tags
- * - Automatic key normalization to 256 bits
  *
  * Key management:
  * - Encryption key stored in Wrangler secrets (ENCRYPTION_KEY)
- * - Accepts keys of any length (128, 192, 256, 384 bits, etc.)
- * - Keys are automatically normalized to 256 bits (32 bytes):
- *   - Oversized keys (e.g., 384-bit) are truncated to 256 bits
- *   - Undersized keys (e.g., 128-bit, 192-bit) are zero-padded to 256 bits
- * - Recommended: Generate with `openssl rand -base64 32` for optimal security
+ * - Requires exactly 256-bit (32 bytes) key
+ * - Generate with: `openssl rand -base64 32`
+ * - Base64 validation performed in constructor
  *
  * Format: `iv:ciphertext` (both base64-encoded)
  */
@@ -130,21 +127,19 @@ export class EncryptionService {
 
   /**
    * Import encryption key for use with Web Crypto API.
-   * Normalizes key to exactly 256 bits (32 bytes) for AES-256-GCM.
+   * Expects exactly 256 bits (32 bytes) for AES-256-GCM.
    *
    * @returns CryptoKey for AES-GCM encryption
+   * @throws Error if key is not exactly 256 bits
    */
   private async importKey(): Promise<CryptoKey> {
     // Decode base64 key
     const keyData = this.base64ToArrayBuffer(this.encryptionKey);
 
-    // Normalize key to exactly 32 bytes (256 bits)
-    const normalizedKey = this.normalizeKeyTo256Bits(keyData);
-
-    // Import key
+    // Import key (expects exactly 32 bytes / 256 bits)
     return await crypto.subtle.importKey(
       'raw',
-      normalizedKey,
+      keyData,
       {
         name: 'AES-GCM',
         length: 256,
@@ -154,31 +149,6 @@ export class EncryptionService {
     );
   }
 
-  /**
-   * Normalize key to exactly 256 bits (32 bytes) for AES-256-GCM.
-   * - Truncates keys longer than 32 bytes (e.g., 384-bit/48-byte keys)
-   * - Pads keys shorter than 32 bytes with zeros
-   *
-   * @param keyData - Raw key bytes
-   * @returns Normalized 32-byte key
-   */
-  private normalizeKeyTo256Bits(keyData: Uint8Array): Uint8Array {
-    const targetLength = 32; // 256 bits = 32 bytes
-
-    if (keyData.length === targetLength) {
-      return keyData;
-    }
-
-    if (keyData.length > targetLength) {
-      // Truncate to 32 bytes (handles 384-bit and other oversized keys)
-      return keyData.slice(0, targetLength);
-    }
-
-    // Pad with zeros to 32 bytes (handles 128-bit and 192-bit keys)
-    const normalized = new Uint8Array(targetLength);
-    normalized.set(keyData);
-    return normalized;
-  }
 
   /**
    * Convert ArrayBuffer to base64 string.

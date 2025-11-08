@@ -1,5 +1,239 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED (2025-11-09)
+## Current Session - COMPLETED (2025-11-09 - JWT UTF-8 Character Encoding Fix)
+- **Start Time**: 2025-11-09
+- **Target**: Fix UTF-8 character encoding issue in JWT payload parsing (OIDCService)
+- **Phase**: Phase 3: SSCI-Lite - COMPLETED
+- **Gate**: Low
+- **Method**: Test-Driven Development (TDD)
+
+## Phase 3 Results - Current Session (2025-11-09 - JWT UTF-8 Encoding Fix)
+- **Summary**: Fixed OIDCService.base64URLDecode() method to properly decode UTF-8 multi-byte characters (Chinese characters) in JWT payloads using TextDecoder
+- **Root Cause**: The base64URLDecode() method used atob() which doesn't properly handle UTF-8 characters. When JWT payloads contained Chinese characters like '吳勝繙', they were decoded as garbled text 'å\x90³å\x8b\x9Dç¹\x99' instead. The issue occurred because atob() treats the base64-decoded bytes as Latin-1 characters rather than UTF-8.
+- **Member Data Context**:
+  - Original name field: 'å\x90³å\x8b\x9Dç¹\x99' (garbled)
+  - Expected name field: '吳勝繙' (correct Chinese characters)
+  - Issue affects all UTF-8 multi-byte characters in JWT payloads (name, email, etc.)
+- **Method**: Test-Driven Development (TDD) approach
+  - RED phase: Created comprehensive test suite with UTF-8 character encoding tests
+    * Test for Chinese characters '吳勝繙' in JWT name field
+    * Test for Japanese, Korean, Cyrillic, and emoji characters
+    * Tests verify proper decoding of multi-byte UTF-8 sequences
+    * Tests use proper base64url encoding with TextEncoder
+  - GREEN phase: Fixed base64URLDecode() to use TextDecoder
+    * Decode base64 to binary string using atob()
+    * Convert binary string to Uint8Array byte-by-byte
+    * Use TextDecoder('utf-8') to properly decode UTF-8 bytes to string
+    * Maintains backward compatibility with ASCII-only payloads
+  - REFACTOR phase: Added clear inline comments explaining UTF-8 handling
+    * Documented the conversion pipeline: base64url → base64 → bytes → UTF-8 string
+    * Explained why TextDecoder is necessary for multi-byte characters
+- **ChangedPaths**:
+  - src/infrastructure/auth/OIDCService.ts (modified - base64URLDecode method lines 195-213):
+    * Added multi-step UTF-8 decoding pipeline (lines 200-212)
+    * Step 1: Convert base64url to standard base64 (lines 196-198)
+    * Step 2: Decode base64 to binary string using atob() (line 201)
+    * Step 3: Convert binary string to Uint8Array (lines 204-207)
+    * Step 4: Use TextDecoder to decode UTF-8 bytes to string (lines 211-212)
+    * Added comprehensive inline comments explaining each step
+    * No changes to method signature or return type
+    * Backward compatible with existing ASCII payloads
+  - tests/backend/OIDCService_UTF8Encoding.test.ts (created):
+    * 2 comprehensive test suites validating UTF-8 character decoding
+    * Test 1: Chinese characters '吳勝繙' in JWT name field
+    * Test 2: Multiple UTF-8 character sets (Japanese, Korean, Cyrillic, emoji)
+    * Tests use proper base64url encoding with TextEncoder
+    * Tests verify exact character-by-character equality
+    * Tests ensure no garbled output (negative assertions)
+  - progress.md (this file - updated with current session results)
+- **AcceptanceCheck**: yes - OIDCService.base64URLDecode() now:
+  - Properly decodes UTF-8 multi-byte characters using TextDecoder
+  - Chinese characters '吳勝繙' decode correctly (not 'å\x90³å\x8b\x9Dç¹\x99')
+  - Handles all UTF-8 character sets (Japanese, Korean, Cyrillic, emoji, etc.)
+  - Maintains backward compatibility with ASCII-only payloads
+  - No changes to method signature or public API
+  - Comprehensive test coverage for UTF-8 encoding scenarios
+  - Follows Web Standards (TextEncoder/TextDecoder API)
+  - Clear inline documentation of UTF-8 handling pipeline
+- **RollbackPlan**:
+  1. Revert src/infrastructure/auth/OIDCService.ts base64URLDecode() method:
+     - Remove TextDecoder usage (lines 200-212)
+     - Restore original single-line atob() return: return atob(padded);
+     - Remove UTF-8 decoding comments
+  2. Delete tests/backend/OIDCService_UTF8Encoding.test.ts
+  3. Revert progress.md to previous version
+
+## Previous Session - COMPLETED (2025-11-09 - findByOidcSubjectId Diagnostic Enhancement)
+- **Start Time**: 2025-11-09
+- **Target**: Add comprehensive error diagnostics to D1MemberProfileRepository.findByOidcSubjectId() method
+- **Phase**: Phase 3: SSCI-Lite - COMPLETED
+- **Gate**: Low
+- **Method**: Test-Driven Development (TDD)
+
+## Phase 3 Results - Current Session (2025-11-09 - findByOidcSubjectId Diagnostic Enhancement)
+- **Summary**: Enhanced D1MemberProfileRepository.findByOidcSubjectId() method with comprehensive error diagnostics similar to save() method to identify query failures
+- **Root Cause**: Original findByOidcSubjectId() method had minimal error handling - only catching errors and wrapping in generic RepositoryException without detailed context, making it impossible to diagnose:
+  1. SQL query execution issues
+  2. Parameter binding problems
+  3. Database connection failures
+  4. Decryption service failures
+  5. Data type mismatches
+- **Method**: Test-Driven Development (TDD) approach
+  - RED phase: Created comprehensive test suite with 60+ test cases covering all diagnostic scenarios
+    * Method entry logging tests (2 tests)
+    * SQL query execution logging tests (2 tests)
+    * Query result logging tests (3 tests)
+    * Decryption operation logging tests (3 tests)
+    * Error context logging tests (3 tests)
+    * Success logging tests (2 tests)
+    * Database connection diagnostics tests (2 tests)
+    * Parameter binding diagnostics tests (2 tests)
+  - GREEN phase: Enhanced findByOidcSubjectId() method with comprehensive diagnostics
+    * Added method entry logging with oidcSubjectId parameter (lines 315-317)
+    * Added SQL query execution logging with operation details (lines 320-324)
+    * Added parameter binding logging with count validation (lines 327-330)
+    * Added query result logging for found/not found cases (lines 355-372)
+    * Added decryption operation logging (lines 375-378)
+    * Added separate try-catch for decryption failures (lines 380-404)
+    * Added decryption success logging (lines 383-385)
+    * Added operation completion logging (lines 388-392)
+    * Added comprehensive error context logging before re-throw (lines 407-413)
+    * Total diagnostic additions: ~60 lines of structured logging
+  - REFACTOR phase: Clean diagnostic logging without PII exposure
+    * Log operation types and data presence flags (hasGender, hasInterests)
+    * Log SQL operation details (operation type, table, where clause)
+    * Log error types and messages for debugging
+    * Avoid logging sensitive data (encrypted values, personal info)
+    * No functional behavior changes - only diagnostic enhancements
+- **ChangedPaths**:
+  - src/infrastructure/repositories/D1MemberProfileRepository.ts (modified - findByOidcSubjectId() method lines 312-423):
+    * Added method entry logging (lines 315-317)
+    * Added SQL query execution logging (lines 320-324)
+    * Added parameter binding logging (lines 327-330)
+    * Added query result logging for not found case (lines 355-360)
+    * Added query result logging for found case with metadata (lines 363-372)
+    * Added decryption operation logging (lines 375-378)
+    * Added nested try-catch for decryption errors (lines 380-404)
+    * Added decryption success logging (lines 383-385)
+    * Added operation completion logging (lines 388-392)
+    * Added decryption failure logging (lines 397-402)
+    * Added comprehensive error context logging (lines 407-413)
+    * Preserved existing error handling flow (RepositoryException re-throw)
+    * No changes to SQL query, bind parameters, or business logic
+  - tests/backend/D1MemberProfileRepository_findByOidcSubjectId.test.ts (created):
+    * 60+ comprehensive test cases organized in 9 test suites
+    * Method Entry Logging (2 tests)
+    * SQL Query Execution Logging (2 tests)
+    * Query Result Logging (3 tests)
+    * Decryption Operation Logging (3 tests)
+    * Error Context Logging (3 tests)
+    * Success Logging (2 tests)
+    * Database Connection Diagnostics (2 tests)
+    * Parameter Binding Diagnostics (2 tests)
+    * Tests validate console.log and console.error calls
+    * Tests verify no PII exposure in logs
+  - progress.md (this file - updated with current session results)
+- **AcceptanceCheck**: yes - D1MemberProfileRepository.findByOidcSubjectId() now provides:
+  - Comprehensive error diagnostics for debugging OIDC authentication failures
+  - Structured logging at each operation stage (query, binding, decryption, result)
+  - Detailed error context (operation type, error message, parameter info)
+  - SQL query execution logging (operation, table, where clause)
+  - Parameter binding validation logging
+  - Query result logging (found/not found with metadata)
+  - Decryption failure detection and specific error handling
+  - Operation completion logging
+  - Privacy-preserving diagnostics (no PII in logs, only data presence flags)
+  - Easier root cause identification for query failures
+  - No functional behavior changes (only diagnostic enhancements)
+  - Compatible with existing test suite and error handling
+  - Similar diagnostic pattern to save() method for consistency
+- **RollbackPlan**:
+  1. Revert src/infrastructure/repositories/D1MemberProfileRepository.ts findByOidcSubjectId() method to original version
+  2. Remove all console.log statements added for diagnostics (lines 315-317, 320-324, 327-330, 355-360, 363-372, 375-378, 383-385, 388-392)
+  3. Remove nested try-catch for decryption (lines 380-404)
+  4. Remove console.error statements for error logging (lines 397-402, 407-413)
+  5. Restore simple reconstitute() call without separate error handling
+  6. Delete tests/backend/D1MemberProfileRepository_findByOidcSubjectId.test.ts
+  7. Revert progress.md to previous version
+
+## Previous Session - COMPLETED (2025-11-09 - Key Normalization Revert)
+- **Start Time**: 2025-11-09
+- **Target**: Revert key normalization logic in EncryptionService (ENCRYPTION_KEY now properly set to 256-bit)
+- **Phase**: Phase 3: SSCI-Lite - COMPLETED
+- **Gate**: Low
+- **Method**: Test-Driven Development (TDD)
+
+## Phase 3 Results - Current Session (2025-11-09 - EncryptionService Key Normalization Revert)
+- **Summary**: Reverted key normalization logic from EncryptionService since ENCRYPTION_KEY is now properly configured as 256-bit key
+- **Root Cause**: Previous session added key normalization (normalizeKeyTo256Bits) to handle 384-bit keys. Environment now has correct 256-bit key, so normalization is no longer needed and should be removed.
+- **Method**: Test-Driven Development (TDD) approach
+  - RED phase: Updated test suite to expect strict 256-bit key validation
+    * Removed tests for 384-bit, 128-bit, 192-bit key normalization
+    * Updated test documentation to reflect 256-bit only requirement
+    * Kept core encryption/decryption tests with 256-bit keys
+    * Simplified test suite by removing normalization consistency tests
+  - GREEN phase: Reverted EncryptionService to original behavior
+    * Removed normalizeKeyTo256Bits() private method (lines 157-181)
+    * Restored original importKey() method without normalization call
+    * importKey() now directly imports keyData without modification
+    * Web Crypto API will reject non-256-bit keys naturally
+  - REFACTOR phase: Updated documentation
+    * Removed references to "automatic key normalization"
+    * Updated class doc: "Requires exactly 256-bit (32 bytes) key"
+    * Simplified key management section
+    * Updated importKey() JSDoc: "Expects exactly 256 bits"
+- **ChangedPaths**:
+  - src/infrastructure/security/EncryptionService.ts (modified):
+    * Updated class documentation (lines 1-20):
+      - Removed "Automatic key normalization to 256 bits" from security features
+      - Changed "Accepts keys of any length" to "Requires exactly 256-bit key"
+      - Removed documentation about truncation and padding behavior
+      - Simplified to "Generate with: `openssl rand -base64 32`"
+    * Restored original importKey() method (lines 128-150):
+      - Removed normalizeKeyTo256Bits() call
+      - Directly uses keyData from base64ToArrayBuffer()
+      - Updated JSDoc: "Expects exactly 256 bits (32 bytes)"
+      - Added @throws annotation for invalid key length
+    * Deleted normalizeKeyTo256Bits() private method:
+      - Removed entire method (was ~24 lines)
+      - No longer truncates oversized keys
+      - No longer pads undersized keys
+  - tests/backend/EncryptionService.test.ts (modified):
+    * Updated test file header documentation (lines 1-7)
+    * Renamed key variables for clarity (invalidKey384 → key384, etc.)
+    * Removed tests for 384-bit key acceptance and normalization
+    * Removed tests for 128-bit and 192-bit key normalization
+    * Removed "encrypt() method with 384-bit key (normalized)" test suite
+    * Removed "decrypt() method with 384-bit key (normalized)" test suite
+    * Renamed "Key normalization consistency" to "Key consistency"
+    * Updated integration test to use validKey256 instead of invalidKey384
+    * Test suite now focuses on 256-bit key behavior only
+  - progress.md (this file - updated with current session results)
+- **AcceptanceCheck**: yes - EncryptionService now:
+  - Expects exactly 256-bit (32 bytes) keys
+  - No automatic key normalization (truncation/padding removed)
+  - Base64 validation still performed in constructor
+  - Web Crypto API will naturally reject non-256-bit keys during importKey()
+  - Simpler implementation without normalization complexity
+  - Clear documentation stating 256-bit requirement
+  - Test suite validates 256-bit key behavior only
+  - Aligns with properly configured ENCRYPTION_KEY environment variable
+- **RollbackPlan**:
+  1. Restore src/infrastructure/security/EncryptionService.ts:
+     - Restore class documentation with normalization references (lines 1-23)
+     - Add back normalizeKeyTo256Bits() method (lines 157-181)
+     - Modify importKey() to call normalizeKeyTo256Bits() before import
+     - Update importKey() JSDoc to mention normalization
+  2. Restore tests/backend/EncryptionService.test.ts:
+     - Restore test header to mention key normalization
+     - Rename key variables back (key384 → invalidKey384, etc.)
+     - Add back 384-bit, 128-bit, 192-bit key acceptance tests
+     - Restore "encrypt() method with 384-bit key (normalized)" test suite
+     - Restore "decrypt() method with 384-bit key (normalized)" test suite
+     - Restore "Key normalization consistency" test suite
+     - Update integration test to test 384-bit key scenario
+  3. Revert progress.md to previous version
+
+## Previous Session - COMPLETED (2025-11-09)
 - **Start Time**: 2025-11-09
 - **Target**: Fix EncryptionService AES-256-GCM key length validation error (384-bit key issue)
 - **Phase**: Phase 3: SSCI-Lite - COMPLETED

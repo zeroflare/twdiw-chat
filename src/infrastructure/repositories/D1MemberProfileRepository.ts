@@ -311,6 +311,24 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
 
   async findByOidcSubjectId(oidcSubjectId: string): Promise<MemberProfile | null> {
     try {
+      // Enhanced diagnostics: Log method entry
+      console.log('[D1MemberProfileRepository] findByOidcSubjectId called', {
+        oidcSubjectId: oidcSubjectId,
+      });
+
+      // Enhanced diagnostics: Log SQL query execution
+      console.log('[D1MemberProfileRepository] Executing SQL query', {
+        operation: 'SELECT',
+        table: 'member_profiles',
+        whereClause: 'oidc_subject_id = ?',
+      });
+
+      // Enhanced diagnostics: Log parameter binding
+      console.log('[D1MemberProfileRepository] Parameter binding', {
+        parameterCount: 1,
+        oidcSubjectId: oidcSubjectId,
+      });
+
       const row = await this.db
         .prepare(
           `SELECT id, oidc_subject_id, status, nickname, gender, interests,
@@ -333,12 +351,70 @@ export class D1MemberProfileRepository implements IMemberProfileRepository {
           updated_at: number;
         }>();
 
+      // Enhanced diagnostics: Log query result
       if (!row) {
+        console.log('[D1MemberProfileRepository] Query result', {
+          found: false,
+          oidcSubjectId: oidcSubjectId,
+        });
         return null;
       }
 
-      return await this.reconstitute(row);
+      console.log('[D1MemberProfileRepository] Query result', {
+        found: true,
+        id: row.id,
+        status: row.status,
+        hasGender: !!row.gender,
+        hasInterests: !!row.interests,
+        hasLinkedVcDid: !!row.linked_vc_did,
+        hasDerivedRank: !!row.derived_rank,
+        version: row.version,
+      });
+
+      // Enhanced diagnostics: Log decryption operation
+      console.log('[D1MemberProfileRepository] Decrypting sensitive fields', {
+        hasGender: !!row.gender,
+        hasInterests: !!row.interests,
+      });
+
+      try {
+        const profile = await this.reconstitute(row);
+
+        console.log('[D1MemberProfileRepository] Decryption completed successfully', {
+          id: row.id,
+        });
+
+        // Enhanced diagnostics: Log successful completion
+        console.log('[D1MemberProfileRepository] findByOidcSubjectId completed successfully', {
+          id: row.id,
+          status: row.status,
+          version: row.version,
+        });
+
+        return profile;
+      } catch (decryptError) {
+        // Enhanced diagnostics: Log decryption failure
+        console.error('[D1MemberProfileRepository] Decryption failed', {
+          id: row.id,
+          errorMessage: decryptError instanceof Error ? decryptError.message : String(decryptError),
+          hasGender: !!row.gender,
+          hasInterests: !!row.interests,
+        });
+        throw decryptError;
+      }
     } catch (error) {
+      // Enhanced diagnostics: Log full error context before re-throwing
+      console.error('[D1MemberProfileRepository] findByOidcSubjectId operation failed', {
+        operation: 'findByOidcSubjectId',
+        oidcSubjectId: oidcSubjectId,
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        isRepositoryException: error instanceof RepositoryException,
+      });
+
+      if (error instanceof RepositoryException) {
+        throw error;
+      }
       throw new RepositoryException(
         'Failed to find member profile by OIDC subject ID',
         error instanceof Error ? error : undefined

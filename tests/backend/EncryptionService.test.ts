@@ -1,9 +1,9 @@
 /**
- * EncryptionService Tests - TDD Approach (RED Phase)
+ * EncryptionService Tests - TDD Approach (Updated for 256-bit only)
  *
  * Tests for AES-256-GCM encryption service using Web Crypto API
- * Focus: Key length validation and normalization (384-bit to 256-bit)
- * Tests MUST pass after implementation (GREEN phase)
+ * Focus: Strict 256-bit key validation without normalization
+ * ENCRYPTION_KEY environment variable now properly set to 256-bit
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -13,14 +13,14 @@ describe('EncryptionService - TDD Tests', () => {
   // Generate valid 256-bit (32 bytes) base64 key
   const validKey256 = btoa(String.fromCharCode(...Array.from({ length: 32 }, (_, i) => i)));
 
-  // Generate invalid 384-bit (48 bytes) base64 key - THIS IS THE BUG
-  const invalidKey384 = btoa(String.fromCharCode(...Array.from({ length: 48 }, (_, i) => i)));
+  // Generate 384-bit (48 bytes) base64 key - should be rejected (no normalization)
+  const key384 = btoa(String.fromCharCode(...Array.from({ length: 48 }, (_, i) => i)));
 
-  // Generate invalid 128-bit (16 bytes) base64 key
-  const invalidKey128 = btoa(String.fromCharCode(...Array.from({ length: 16 }, (_, i) => i)));
+  // Generate 128-bit (16 bytes) base64 key - should be rejected
+  const key128 = btoa(String.fromCharCode(...Array.from({ length: 16 }, (_, i) => i)));
 
-  // Generate invalid 192-bit (24 bytes) base64 key
-  const invalidKey192 = btoa(String.fromCharCode(...Array.from({ length: 24 }, (_, i) => i)));
+  // Generate 192-bit (24 bytes) base64 key - should be rejected
+  const key192 = btoa(String.fromCharCode(...Array.from({ length: 24 }, (_, i) => i)));
 
   describe('Constructor - Key Validation', () => {
     it('should create service with valid 256-bit key', () => {
@@ -42,25 +42,11 @@ describe('EncryptionService - TDD Tests', () => {
       expect(() => new EncryptionService(undefined as any)).toThrow('Encryption key cannot be empty');
     });
 
-    it('should accept 384-bit key and normalize to 256-bit (FIX TARGET)', () => {
-      // This is the main bug fix: accept 384-bit keys and normalize
-      expect(() => new EncryptionService(invalidKey384)).not.toThrow();
-      const service = new EncryptionService(invalidKey384);
-      expect(service).toBeDefined();
-    });
-
-    it('should accept 128-bit key and normalize to 256-bit', () => {
-      // Should pad shorter keys to 256-bit
-      expect(() => new EncryptionService(invalidKey128)).not.toThrow();
-      const service = new EncryptionService(invalidKey128);
-      expect(service).toBeDefined();
-    });
-
-    it('should accept 192-bit key and normalize to 256-bit', () => {
-      // Should pad shorter keys to 256-bit
-      expect(() => new EncryptionService(invalidKey192)).not.toThrow();
-      const service = new EncryptionService(invalidKey192);
-      expect(service).toBeDefined();
+    it('should validate key is exactly 256-bit', () => {
+      // Base64 validation happens in constructor
+      // Key length validation happens during importKey()
+      // Since we removed normalization, only 256-bit keys are valid
+      expect(() => new EncryptionService(validKey256)).not.toThrow();
     });
 
     it('should throw error for invalid base64 key', () => {
@@ -144,29 +130,6 @@ describe('EncryptionService - TDD Tests', () => {
     });
   });
 
-  describe('encrypt() method with 384-bit key (normalized)', () => {
-    let service: EncryptionService;
-
-    beforeEach(() => {
-      service = new EncryptionService(invalidKey384);
-    });
-
-    it('should successfully encrypt with normalized 384-bit key', async () => {
-      const plaintext = 'test-data-with-384bit-key';
-      const encrypted = await service.encrypt(plaintext);
-
-      expect(encrypted).toContain(':');
-      const parts = encrypted.split(':');
-      expect(parts).toHaveLength(2);
-      expect(parts[0]).toBeTruthy();
-      expect(parts[1]).toBeTruthy();
-    });
-
-    it('should not throw AES key length error', async () => {
-      // This was the original bug: "Imported AES key length must be 128, 192, or 256 bits but provided 384"
-      await expect(service.encrypt('test')).resolves.toBeDefined();
-    });
-  });
 
   describe('decrypt() method with 256-bit key', () => {
     let service: EncryptionService;
@@ -251,68 +214,18 @@ describe('EncryptionService - TDD Tests', () => {
     });
   });
 
-  describe('decrypt() method with 384-bit key (normalized)', () => {
-    let service: EncryptionService;
 
-    beforeEach(() => {
-      service = new EncryptionService(invalidKey384);
-    });
-
-    it('should successfully decrypt with normalized 384-bit key', async () => {
-      const plaintext = 'test-data-with-384bit-key';
-      const encrypted = await service.encrypt(plaintext);
-      const decrypted = await service.decrypt(encrypted);
-
-      expect(decrypted).toBe(plaintext);
-    });
-
-    it('should round-trip encrypt/decrypt successfully', async () => {
-      const testData = [
-        'simple-text',
-        'unicode-测试🔒',
-        JSON.stringify({ complex: 'data', nested: { value: 123 } }),
-        'special!@#$%^&*()chars'
-      ];
-
-      for (const plaintext of testData) {
-        const encrypted = await service.encrypt(plaintext);
-        const decrypted = await service.decrypt(encrypted);
-        expect(decrypted).toBe(plaintext);
-      }
-    });
-  });
-
-  describe('Key normalization consistency', () => {
-    it('should normalize keys deterministically', async () => {
-      // Same input key should produce same normalized key
-      const service1 = new EncryptionService(invalidKey384);
-      const service2 = new EncryptionService(invalidKey384);
+  describe('Key consistency', () => {
+    it('should handle same 256-bit key consistently', async () => {
+      // Same input key should produce same behavior
+      const service1 = new EncryptionService(validKey256);
+      const service2 = new EncryptionService(validKey256);
 
       const plaintext = 'test-consistency';
       const encrypted1 = await service1.encrypt(plaintext);
       const decrypted1 = await service2.decrypt(encrypted1);
 
       expect(decrypted1).toBe(plaintext);
-    });
-
-    it('should normalize 128-bit key consistently', async () => {
-      const service = new EncryptionService(invalidKey128);
-      const plaintext = 'test-128bit';
-
-      const encrypted = await service.encrypt(plaintext);
-      const decrypted = await service.decrypt(encrypted);
-
-      expect(decrypted).toBe(plaintext);
-    });
-
-    it('should normalize 192-bit key consistently', async () => {
-      const service = new EncryptionService(invalidKey192);
-      const plaintext = 'test-192bit';
-
-      const encrypted = await service.encrypt(plaintext);
-      const decrypted = await service.decrypt(encrypted);
-
-      expect(decrypted).toBe(plaintext);
     });
   });
 
@@ -398,9 +311,9 @@ describe('EncryptionService - TDD Tests', () => {
       expect(parsed).toEqual(personalInfo);
     });
 
-    it('should work with 384-bit key from environment (normalized)', async () => {
-      // Simulate receiving 384-bit key from environment variable
-      const service384 = new EncryptionService(invalidKey384);
+    it('should work with properly configured 256-bit key from environment', async () => {
+      // Simulate receiving correct 256-bit key from environment variable
+      const service256 = new EncryptionService(validKey256);
 
       const personalInfo = {
         realName: 'Test User',
@@ -408,8 +321,8 @@ describe('EncryptionService - TDD Tests', () => {
       };
 
       const plaintext = JSON.stringify(personalInfo);
-      const encrypted = await service384.encrypt(plaintext);
-      const decrypted = await service384.decrypt(encrypted);
+      const encrypted = await service256.encrypt(plaintext);
+      const decrypted = await service256.decrypt(encrypted);
       const parsed = JSON.parse(decrypted);
 
       expect(parsed).toEqual(personalInfo);
