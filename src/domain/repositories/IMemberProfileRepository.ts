@@ -121,7 +121,7 @@ export interface IMemberProfileRepository {
    * - Decrypt sensitive fields for all returned aggregates
    * - Consider pagination for large result sets (future enhancement)
    *
-   * @param rank - The rank to filter by (Gold, Silver, or Bronze)
+   * @param rank - The rank to filter by (財富稱號階層)
    * @returns Array of VERIFIED MemberProfile aggregates with the specified rank
    */
   findByRank(rank: Rank): Promise<MemberProfile[]>;

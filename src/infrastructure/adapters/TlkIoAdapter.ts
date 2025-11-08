@@ -37,19 +37,18 @@ export class TlkIoAdapter {
     return this.sanitizeChannelId(channelId);
   }
 
-  generatePrivateChatChannelId(sessionId: string, userIdentifier?: string): string {
+  generatePrivateChatChannelId(sessionId: string): string {
     // Generate simpler channel ID to avoid tlk.io restrictions
     // Use only alphanumeric characters and make it shorter
     const shortId = sessionId.substring(0, 8).replace(/[^a-z0-9]/g, '');
-    const userSuffix = userIdentifier ? `-${userIdentifier.substring(0, 4)}` : '';
-    const channelId = `match-${shortId}${userSuffix}`.substring(0, 20); // Use 'match-' prefix for consistency
+    const channelId = `match-${shortId}`.substring(0, 20); // Use 'match-' prefix for consistency
     return this.sanitizeChannelId(channelId);
   }
 
   createForumChatInfo(request: ForumChatRequest): ChatChannelInfo {
     const channelId = this.generateForumChannelId(request.forumId);
     // Use iframe embed to avoid cross-origin cookie 403 errors
-    const embedHtml = this.generateIframeEmbed(channelId, request.nickname, request.memberId);
+    const embedHtml = this.generateIframeEmbed(channelId, request.nickname);
 
     return {
       channelId,
@@ -59,7 +58,7 @@ export class TlkIoAdapter {
   }
 
   createPrivateChatInfo(request: PrivateChatRequest): ChatChannelInfo {
-    const channelId = this.generatePrivateChatChannelId(request.sessionId, request.memberId);
+    const channelId = this.generatePrivateChatChannelId(request.sessionId);
     // Use correct tlk.io script-based embed with data-nickname
     const embedHtml = this.generateEmbedHtml(channelId, request.nickname);
 
@@ -75,22 +74,20 @@ export class TlkIoAdapter {
    * This method resolves 403 errors by using iframe with correct sandbox and cookie policies
    * Also fixes getComputedStyle errors by ensuring proper iframe initialization with onload handlers
    */
-  generateIframeEmbed(channelId: string, nickname: string, userIdentifier?: string): string {
+  generateIframeEmbed(channelId: string, nickname: string): string {
     // Sanitize inputs to prevent XSS
     const safeChannelId = this.escapeHtml(channelId);
     const safeNickname = encodeURIComponent(nickname); // URL encode for query parameter
     const safeTheme = this.escapeHtml(this.theme);
 
-    // Build tlk.io URL with parameters and user-specific cache-busting
+    // Build tlk.io URL with parameters and cache-busting
     const cacheBuster = Date.now();
-    const userHash = userIdentifier ? encodeURIComponent(userIdentifier.substring(0, 8)) : 'anon';
-    const tlkUrl = `${this.baseUrl}/${safeChannelId}?nickname=${safeNickname}&theme=${safeTheme}&_t=${cacheBuster}&_u=${userHash}`;
+    const tlkUrl = `${this.baseUrl}/${safeChannelId}?nickname=${safeNickname}&theme=${safeTheme}&_t=${cacheBuster}`;
     
     // Debug logging
     console.log('TlkIo URL Generated:', {
       channelId: safeChannelId,
       nickname: safeNickname,
-      userHash,
       cacheBuster,
       fullUrl: tlkUrl
     });

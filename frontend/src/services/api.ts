@@ -17,9 +17,10 @@ export interface Member {
 export interface Forum {
   id: string;
   description: string;
-  requiredRank: 'Gold' | 'Silver' | 'Bronze';
+  requiredRank: 'EARTH_OL_GRADUATE' | 'LIFE_WINNER_S' | 'QUASI_WEALTHY_VIP' | 'DISTINGUISHED_PETTY' | 'NEWBIE_VILLAGE';
   memberCount: number;
   capacity: number;
+  accessible: boolean;
 }
 
 export interface VerificationResult {
@@ -98,11 +99,10 @@ class ApiService {
   }
 
   // Authentication
+  // Both OIDC login and mockLogin are available in development mode
+  // Use login() for real OIDC authentication testing
+  // Use mockLogin(userId) for quick mock authentication
   async login() {
-    if (this.isDev) {
-      // In development, show mock login options instead
-      return { error: 'Use mock login in development mode' };
-    }
     return this.request<{ authUrl: string }>('/auth/login');
   }
 

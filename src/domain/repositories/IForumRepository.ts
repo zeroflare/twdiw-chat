@@ -85,7 +85,7 @@ export interface IForumRepository {
    * - Return empty array if no forums found
    * - Use Forum.reconstitute() for all returned aggregates
    *
-   * @param rank - The required rank to filter by (Gold, Silver, or Bronze)
+   * @param rank - The required rank to filter by (財富稱號階層)
    * @returns Array of ACTIVE Forum aggregates with the specified required rank
    */
   findByRequiredRank(rank: Rank): Promise<Forum[]>;
@@ -111,9 +111,11 @@ export interface IForumRepository {
    * Find all forums accessible to a member with the given rank.
    *
    * This query applies the rank hierarchy and capacity logic:
-   * - Gold members can access Gold, Silver, and Bronze forums
-   * - Silver members can access Silver and Bronze forums
-   * - Bronze members can only access Bronze forums
+   * - 地球OL財富畢業證書 members can access 地球OL財富畢業證書, 人生勝利組S級玩家卡 forums
+   * - 人生勝利組S級玩家卡 members can access 地球OL財富畢業證書, 人生勝利組S級玩家卡, 準富豪VIP登錄證 forums  
+   * - 準富豪VIP登錄證 members can access 人生勝利組S級玩家卡, 準富豪VIP登錄證, 尊爵不凡．小資族認證 forums
+   * - 尊爵不凡．小資族認證 members can access 準富豪VIP登錄證, 尊爵不凡．小資族認證, 新手村榮譽村民證 forums
+   * - 新手村榮譽村民證 members can access 尊爵不凡．小資族認證, 新手村榮譽村民證 forums
    * - Excludes full forums (memberCount >= capacity)
    * - Excludes ARCHIVED forums
    *
@@ -125,14 +127,16 @@ export interface IForumRepository {
    * - Filter by status = ACTIVE
    * - Filter by memberCount < capacity (not full)
    * - Apply rank hierarchy logic:
-   *   - Gold members: requiredRank IN (Gold, Silver, Bronze)
-   *   - Silver members: requiredRank IN (Silver, Bronze)
-   *   - Bronze members: requiredRank = Bronze
+   *   - 地球OL財富畢業證書 members: requiredRank IN (EARTH_OL_GRADUATE, LIFE_WINNER_S)
+   *   - 人生勝利組S級玩家卡 members: requiredRank IN (EARTH_OL_GRADUATE, LIFE_WINNER_S, QUASI_WEALTHY_VIP)
+   *   - 準富豪VIP登錄證 members: requiredRank IN (LIFE_WINNER_S, QUASI_WEALTHY_VIP, DISTINGUISHED_PETTY)
+   *   - 尊爵不凡．小資族認證 members: requiredRank IN (QUASI_WEALTHY_VIP, DISTINGUISHED_PETTY, NEWBIE_VILLAGE)
+   *   - 新手村榮譽村民證 members: requiredRank IN (DISTINGUISHED_PETTY, NEWBIE_VILLAGE)
    * - Order by requiredRank DESC, createdAt DESC
    * - Return empty array if no accessible forums
    * - Consider pagination for large result sets (future enhancement)
    *
-   * @param memberRank - The rank of the member (Gold, Silver, or Bronze)
+   * @param memberRank - The rank of the member (財富稱號階層)
    * @returns Array of accessible ACTIVE Forum aggregates
    */
   findAccessibleForums(memberRank: Rank): Promise<Forum[]>;

@@ -36,7 +36,7 @@ export function authMiddleware() {
 async function handleMockAuth(c: Context, next: Next) {
   try {
     // Check for mock user ID in header or cookie
-    const mockUserId = c.req.header('X-Mock-User-Id') || getCookie(c, 'mock-user-id') || 'user-2'; // Default to Gold user
+    const mockUserId = c.req.header('X-Mock-User-Id') || getCookie(c, 'mock-user-id') || 'user-2'; // Default to LIFE_WINNER_S user
     
     const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
     const mockUser = mockAuthService.getMockUser(mockUserId);
@@ -54,10 +54,11 @@ async function handleMockAuth(c: Context, next: Next) {
       return c.json({ error: 'Member not found in database' }, 404);
     }
 
-    // Add user context with actual database ID
+    // Add user context with actual database ID and rank
     c.set('user', {
       oidcSubjectId: mockUser.oidcSubjectId,
-      memberId: member.getId()
+      memberId: member.getId(),
+      rank: member.getDerivedRank()
     });
 
     await next();
@@ -90,10 +91,16 @@ async function handleJWTAuth(c: Context, next: Next) {
     // Verify token
     const payload = await jwtService.verify(token);
     
+    // Get member from database to ensure we have latest rank info
+    const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const member = await memberRepo.findByOidcSubjectId(payload.sub);
+    
     // Add user context
     c.set('user', {
       oidcSubjectId: payload.sub,
-      memberId: payload.memberId
+      memberId: payload.memberId,
+      rank: member?.getDerivedRank()
     });
 
     await next();
@@ -124,7 +131,8 @@ export function optionalAuthMiddleware() {
             if (member) {
               c.set('user', {
                 oidcSubjectId: mockUser.oidcSubjectId,
-                memberId: member.getId() // Use actual database ID
+                memberId: member.getId(), // Use actual database ID
+                rank: member.getDerivedRank()
               });
             }
           }
@@ -145,9 +153,16 @@ export function optionalAuthMiddleware() {
 
         if (token) {
           const payload = await jwtService.verify(token);
+          
+          // Get member from database to ensure we have latest rank info
+          const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+          const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+          const member = await memberRepo.findByOidcSubjectId(payload.sub);
+          
           c.set('user', {
             oidcSubjectId: payload.sub,
-            memberId: payload.memberId
+            memberId: payload.memberId,
+            rank: member?.getDerivedRank()
           });
         }
       }

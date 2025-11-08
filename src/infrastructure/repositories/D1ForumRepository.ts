@@ -343,14 +343,18 @@ export class D1ForumRepository implements IForumRepository {
 
   private getAccessibleRanks(memberRank: Rank): Rank[] {
     switch (memberRank) {
-      case Rank.GOLD:
-        return [Rank.GOLD, Rank.SILVER, Rank.BRONZE];
-      case Rank.SILVER:
-        return [Rank.SILVER, Rank.BRONZE];
-      case Rank.BRONZE:
-        return [Rank.BRONZE];
+      case Rank.EARTH_OL_GRADUATE:
+        return [Rank.EARTH_OL_GRADUATE, Rank.LIFE_WINNER_S];
+      case Rank.LIFE_WINNER_S:
+        return [Rank.EARTH_OL_GRADUATE, Rank.LIFE_WINNER_S, Rank.QUASI_WEALTHY_VIP];
+      case Rank.QUASI_WEALTHY_VIP:
+        return [Rank.LIFE_WINNER_S, Rank.QUASI_WEALTHY_VIP, Rank.DISTINGUISHED_PETTY];
+      case Rank.DISTINGUISHED_PETTY:
+        return [Rank.QUASI_WEALTHY_VIP, Rank.DISTINGUISHED_PETTY, Rank.NEWBIE_VILLAGE];
+      case Rank.NEWBIE_VILLAGE:
+        return [Rank.DISTINGUISHED_PETTY, Rank.NEWBIE_VILLAGE];
       default:
-        return [];
+        return [Rank.NEWBIE_VILLAGE];
     }
   }
 

@@ -2,21 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { api, Forum } from '../../services/api';
 
-const getRankColor = (rank: string) => {
-  switch (rank) {
-    case 'Gold': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    case 'Silver': return 'text-gray-600 bg-gray-50 border-gray-200';
-    case 'Bronze': return 'text-orange-600 bg-orange-50 border-orange-200';
-    default: return 'text-gray-600 bg-gray-50 border-gray-200';
-  }
+// Forum name mapping based on rank requirements
+const FORUM_NAMES: Record<string, string> = {
+  'EARTH_OL_GRADUATE': '地表頂級投資俱樂部 👑',
+  'LIFE_WINNER_S': '人生勝利組研習社 🏆', 
+  'QUASI_WEALTHY_VIP': '準富豪交流會 💼',
+  'DISTINGUISHED_PETTY': '小資族奮鬥基地 ☕',
+  'NEWBIE_VILLAGE': '新手村薪水冒險團 🌱'
 };
 
-const canAccessForum = (userRank?: string, requiredRank?: string) => {
-  if (!userRank || !requiredRank) return false;
-  
-  const rankOrder = { 'Gold': 3, 'Silver': 2, 'Bronze': 1 };
-  return rankOrder[userRank as keyof typeof rankOrder] >= rankOrder[requiredRank as keyof typeof rankOrder];
-};
+// Use backend-provided accessible property instead of frontend logic
 
 export function ForumList() {
   const { user } = useAuth();
@@ -73,7 +68,6 @@ export function ForumList() {
               <h2>論壇聊天室</h2>
               <div class="forum-info">
                 <strong>論壇:</strong> ${response.data?.forumInfo.description}<br>
-                <strong>等級要求:</strong> ${response.data?.forumInfo.requiredRank}<br>
                 <strong>暱稱:</strong> ${response.data?.nickname}
               </div>
             </div>
@@ -143,7 +137,7 @@ export function ForumList() {
       
       <div className="space-y-4">
         {forums.map((forum) => {
-          const hasAccess = user.status === 'VERIFIED' && canAccessForum(user.rank, forum.requiredRank);
+          const hasAccess = user.status === 'VERIFIED' && forum.accessible;
           const isJoining = joiningForum === forum.id;
           
           return (
@@ -151,11 +145,9 @@ export function ForumList() {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${getRankColor(forum.requiredRank)}`}>
-                      {forum.requiredRank}
-                    </span>
+                    <h3 className="text-lg font-semibold">{FORUM_NAMES[forum.requiredRank] || '未知論壇'}</h3>
                     <span className="text-sm text-gray-500">
-                      {forum.memberCount}/{forum.capacity} 人
+                      {forum.memberCount} 位成員
                     </span>
                   </div>
                   <p className="text-gray-700">{forum.description}</p>
@@ -172,7 +164,7 @@ export function ForumList() {
                     </button>
                   ) : (
                     <div className="text-sm text-gray-500">
-                      {user.status === 'GENERAL' ? '需要驗證' : '等級不足'}
+                      {user.status === 'GENERAL' ? '需要驗證' : '無法進入'}
                     </div>
                   )}
                 </div>

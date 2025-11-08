@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api, MockUser } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+import { getRankDisplayName } from '../../utils/rankUtils';
 
 export function DevLogin() {
   const { refreshUser } = useAuth();
@@ -98,7 +99,7 @@ export function DevLogin() {
                   <div className="font-medium text-gray-900">{user.nickname}</div>
                   <div className="text-sm text-gray-500">
                     {user.status === 'VERIFIED' ? (
-                      <span className="text-green-600">已驗證 - {user.rank}</span>
+                      <span className="text-green-600">已驗證 - {getRankDisplayName(user.rank)}</span>
                     ) : (
                       <span className="text-yellow-600">一般會員</span>
                     )}

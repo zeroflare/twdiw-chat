@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { Rank } from '../domain/entities/MemberProfile';
 import { TlkIoAdapter } from '../infrastructure/adapters/TlkIoAdapter';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
 import { D1ForumRepository } from '../infrastructure/repositories/D1ForumRepository';
@@ -242,21 +243,24 @@ app.post('/match', authMiddleware(), async (c) => {
     // Find a match from waiting queue (users who actively requested matching)
     const compatibleRanks = getCompatibleRanks(member.getDerivedRank());
     const matchedMember = await findAvailableMatch(memberRepo, user.memberId, compatibleRanks, c.env.DB);
-    
+
     if (!matchedMember) {
       // Add to waiting queue
-      await addToMatchingQueue(c.env.DB, user.memberId, member.getDerivedRank() || 'Bronze');
-      
-      return c.json({ 
+      await addToMatchingQueue(c.env.DB, user.memberId, member.getDerivedRank() || Rank.NEWBIE_VILLAGE);
+
+      return c.json({
         message: 'Added to matching queue. You will be notified when a match is found.',
         status: 'waiting'
       });
     }
 
-    // Remove matched user from queue and create session
-    await removeFromMatchingQueue(c.env.DB, matchedMember.getId());
+    // Update both users' queue records to MATCHED status instead of deleting
+    // This allows waiting users to discover they've been matched
+    await updateMatchingQueueStatus(c.env.DB, matchedMember.getId(), user.memberId);
+    await updateMatchingQueueStatus(c.env.DB, user.memberId, matchedMember.getId());
+
     const session = await createPrivateChatSession(sessionRepo, user.memberId, matchedMember.getId());
-    
+
     return c.json({
       message: 'Match found!',
       sessionId: session.getId(),
@@ -316,10 +320,12 @@ app.delete('/match', authMiddleware(), async (c) => {
 function getCompatibleRanks(userRank?: string): string[] {
   // Simple compatibility: same rank or adjacent ranks
   switch (userRank) {
-    case 'Gold': return ['Gold', 'Silver'];
-    case 'Silver': return ['Silver', 'Gold', 'Bronze'];
-    case 'Bronze': return ['Bronze', 'Silver'];
-    default: return ['Bronze', 'Silver', 'Gold'];
+    case Rank.EARTH_OL_GRADUATE: return [Rank.EARTH_OL_GRADUATE, Rank.LIFE_WINNER_S];
+    case Rank.LIFE_WINNER_S: return [Rank.LIFE_WINNER_S, Rank.EARTH_OL_GRADUATE, Rank.QUASI_WEALTHY_VIP];
+    case Rank.QUASI_WEALTHY_VIP: return [Rank.QUASI_WEALTHY_VIP, Rank.LIFE_WINNER_S, Rank.DISTINGUISHED_PETTY];
+    case Rank.DISTINGUISHED_PETTY: return [Rank.DISTINGUISHED_PETTY, Rank.QUASI_WEALTHY_VIP, Rank.NEWBIE_VILLAGE];
+    case Rank.NEWBIE_VILLAGE: return [Rank.NEWBIE_VILLAGE, Rank.DISTINGUISHED_PETTY];
+    default: return [Rank.NEWBIE_VILLAGE, Rank.DISTINGUISHED_PETTY, Rank.QUASI_WEALTHY_VIP];
   }
 }
 
@@ -391,17 +397,30 @@ async function createPrivateChatSession(sessionRepo: any, member1Id: string, mem
 async function addToMatchingQueue(db: D1Database, memberId: string, rank: string): Promise<void> {
   try {
     const queueId = `queue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes timeout
-    
+    const now = Date.now();
+    const expiresAt = now + (10 * 60 * 1000); // 10 minutes timeout
+
     await db
       .prepare(`
-        INSERT OR REPLACE INTO matching_queue (id, member_id, rank, created_at, expires_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO matching_queue (id, member_id, rank, created_at, updated_at, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?)
       `)
-      .bind(queueId, memberId, rank, Date.now(), expiresAt)
+      .bind(queueId, memberId, rank, now, now, expiresAt)
       .run();
   } catch (error) {
     console.error('Error adding to matching queue:', error);
+  }
+}
+
+async function updateMatchingQueueStatus(db: D1Database, memberId: string, matchedWithId: string): Promise<void> {
+  try {
+    const now = Date.now();
+    await db
+      .prepare('UPDATE matching_queue SET status = ?, matched_with_id = ?, updated_at = ? WHERE member_id = ?')
+      .bind('MATCHED', matchedWithId, now, memberId)
+      .run();
+  } catch (error) {
+    console.error('Error updating matching queue status:', error);
   }
 }
 

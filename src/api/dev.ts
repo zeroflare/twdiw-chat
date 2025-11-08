@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { Rank } from '../domain/entities/MemberProfile';
 import { setCookie } from 'hono/cookie';
 import { MockAuthService } from '../infrastructure/auth/MockAuthService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
@@ -115,7 +116,7 @@ app.post('/login/:userId', async (c) => {
 // POST /api/dev/vc/mock-verify - Mock VC verification
 app.post('/vc/mock-verify', async (c) => {
   try {
-    const { rank = 'Gold' } = await c.req.json();
+    const { rank = Rank.EARTH_OL_GRADUATE } = await c.req.json();
     const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
     
     // Generate mock verification
@@ -131,12 +132,12 @@ app.post('/vc/mock-verify', async (c) => {
 app.get('/vc/mock-complete/:transactionId', async (c) => {
   try {
     const transactionId = c.req.param('transactionId');
-    const rank = c.req.query('rank') || 'Gold';
+    const rank = c.req.query('rank') || Rank.EARTH_OL_GRADUATE;
     
     const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
     const result = mockAuthService.completeMockVCVerification(
       transactionId, 
-      rank as 'Gold' | 'Silver' | 'Bronze'
+      rank as Rank
     );
     
     return c.json(result);
@@ -196,7 +197,7 @@ app.post('/seed-data', async (c) => {
 app.post('/vc/complete/:transactionId', async (c) => {
   try {
     const transactionId = c.req.param('transactionId');
-    const { rank = 'Gold' } = await c.req.json();
+    const { rank = Rank.EARTH_OL_GRADUATE } = await c.req.json();
     
     // Update verification session to completed
     const sessionStore = new (await import('../infrastructure/services/VCVerificationSessionStore')).VCVerificationSessionStore(c.env.DB);

@@ -12,19 +12,49 @@ export enum ForumStatus {
 
 /**
  * Valid rank values required to access forums.
- * Re-exported from MemberProfile for consistency.
+ * Based on 財富稱號 (Wealth Titles) system.
  */
 export enum Rank {
-  GOLD = 'Gold',
-  SILVER = 'Silver',
-  BRONZE = 'Bronze'
+  EARTH_OL_GRADUATE = 'EARTH_OL_GRADUATE',           // 地表頂級投資俱樂部
+  LIFE_WINNER_S = 'LIFE_WINNER_S',                   // 人生勝利組研習社  
+  QUASI_WEALTHY_VIP = 'QUASI_WEALTHY_VIP',           // 準富豪交流會
+  DISTINGUISHED_PETTY = 'DISTINGUISHED_PETTY',       // 小資族奮鬥基地
+  NEWBIE_VILLAGE = 'NEWBIE_VILLAGE'                  // 新手村薪水冒險團
 }
 
 /**
  * Rank hierarchy for access control.
  * Higher index = higher rank.
  */
-const RANK_HIERARCHY: Rank[] = [Rank.BRONZE, Rank.SILVER, Rank.GOLD];
+const RANK_HIERARCHY: Rank[] = [
+  Rank.NEWBIE_VILLAGE,        // 新手村薪水冒險團 🌱
+  Rank.DISTINGUISHED_PETTY,   // 小資族奮鬥基地 ☕  
+  Rank.QUASI_WEALTHY_VIP,     // 準富豪交流會 💼
+  Rank.LIFE_WINNER_S,         // 人生勝利組研習社 🏆
+  Rank.EARTH_OL_GRADUATE      // 地表頂級投資俱樂部 👑
+];
+
+/**
+ * Forum name mapping based on rank requirements.
+ */
+export const FORUM_NAMES: Record<Rank, string> = {
+  [Rank.EARTH_OL_GRADUATE]: '地表頂級投資俱樂部 👑',
+  [Rank.LIFE_WINNER_S]: '人生勝利組研習社 🏆', 
+  [Rank.QUASI_WEALTHY_VIP]: '準富豪交流會 💼',
+  [Rank.DISTINGUISHED_PETTY]: '小資族奮鬥基地 ☕',
+  [Rank.NEWBIE_VILLAGE]: '新手村薪水冒險團 🌱'
+};
+
+/**
+ * Wealth title mapping for VC verification.
+ */
+export const WEALTH_TITLES: Record<Rank, string> = {
+  [Rank.EARTH_OL_GRADUATE]: '地球OL財富畢業證書',
+  [Rank.LIFE_WINNER_S]: '人生勝利組S級玩家卡',
+  [Rank.QUASI_WEALTHY_VIP]: '準富豪VIP登錄證',
+  [Rank.DISTINGUISHED_PETTY]: '尊爵不凡．小資族認證',
+  [Rank.NEWBIE_VILLAGE]: '新手村榮譽村民證'
+};
 
 /**
  * Properties required to create a new Forum.
@@ -59,7 +89,7 @@ export interface ReconstituteForumProps {
  *
  * Represents a gated group forum in the 三人行必有我師論壇 platform.
  * This is the aggregate root for the Forum bounded context, responsible for:
- * - Enforcing rank-based access control (Gold > Silver > Bronze)
+ * - Enforcing rank-based access control (財富稱號階層: 地球OL財富畢業證書 > 人生勝利組S級玩家卡 > 準富豪VIP登錄證 > 尊爵不凡．小資族認證 > 新手村榮譽村民證)
  * - Managing forum capacity limits
  * - Managing forum lifecycle (active/archived)
  * - Tracking member count for capacity management
@@ -203,7 +233,7 @@ export class Forum {
    * - Forum must be ACTIVE (not archived)
    * - Forum must have available capacity (not full)
    * - Member's rank must be >= forum's required rank
-   * - Rank hierarchy: Gold > Silver > Bronze
+   * - Rank hierarchy: 地球OL財富畢業證書 > 人生勝利組S級玩家卡 > 準富豪VIP登錄證 > 尊爵不凡．小資族認證 > 新手村榮譽村民證
    *
    * @param memberRank - The rank of the member attempting to access
    * @returns true if member can access, false otherwise

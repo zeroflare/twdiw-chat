@@ -4,7 +4,13 @@
 
 CREATE TABLE IF NOT EXISTS forums (
     id TEXT PRIMARY KEY NOT NULL,
-    required_rank TEXT NOT NULL CHECK (required_rank IN ('Gold', 'Silver', 'Bronze')),
+    required_rank TEXT NOT NULL CHECK (required_rank IN (
+        'EARTH_OL_GRADUATE',
+        'LIFE_WINNER_S', 
+        'QUASI_WEALTHY_VIP',
+        'DISTINGUISHED_PETTY',
+        'NEWBIE_VILLAGE'
+    )),
     description TEXT,
     tlk_channel_id TEXT NOT NULL UNIQUE,
     capacity INTEGER NOT NULL,

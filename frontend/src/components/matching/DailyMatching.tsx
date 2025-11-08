@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../services/api';
+import { getRankDisplayName } from '../../utils/rankUtils';
 
 export function DailyMatching() {
   const { user } = useAuth();
@@ -13,7 +14,20 @@ export function DailyMatching() {
 
   useEffect(() => {
     checkMatchStatus();
-  }, []);
+    
+    // Start polling when waiting for match
+    let pollInterval: NodeJS.Timeout | null = null;
+    
+    if (matchStatus === 'waiting') {
+      pollInterval = setInterval(checkMatchStatus, 3000); // Poll every 3 seconds
+    }
+    
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [matchStatus]);
 
   const checkMatchStatus = async () => {
     try {
@@ -119,7 +133,7 @@ export function DailyMatching() {
             <p className="text-green-700 font-medium">✅ 配對成功！</p>
             {matchInfo.matchedWith && (
               <p className="text-green-600 text-sm mt-1">
-                與 {matchInfo.matchedWith.nickname} ({matchInfo.matchedWith.rank}) 配對
+                與 {matchInfo.matchedWith.nickname} ({getRankDisplayName(matchInfo.matchedWith.rank)}) 配對
               </p>
             )}
           </div>

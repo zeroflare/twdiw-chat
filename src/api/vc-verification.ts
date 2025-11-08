@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { Rank } from '../domain/entities/MemberProfile';
 import { VCVerificationService } from '../infrastructure/services/VCVerificationService';
 import { VCVerificationSessionStore } from '../infrastructure/services/VCVerificationSessionStore';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
@@ -152,7 +153,7 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
       const shouldComplete = sessionAge > 10000; // Complete after 10 seconds
       
       if (shouldComplete) {
-        const mockRanks = ['Gold', 'Silver', 'Bronze'];
+        const mockRanks = [Rank.EARTH_OL_GRADUATE, Rank.LIFE_WINNER_S, Rank.QUASI_WEALTHY_VIP, Rank.DISTINGUISHED_PETTY, Rank.NEWBIE_VILLAGE];
         const randomRank = mockRanks[Math.floor(Math.random() * mockRanks.length)];
         const mockDid = `did:example:mock-${Math.random().toString(36).substr(2, 9)}`;
         

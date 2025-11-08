@@ -45,7 +45,7 @@ export interface VerificationRequest {
  * Claims extracted from a verified Rank Card VC.
  *
  * @property did - Decentralized Identifier from the VC
- * @property rank - Rank value (Gold, Silver, Bronze)
+ * @property rank - Rank value (財富稱號: EARTH_OL_GRADUATE, LIFE_WINNER_S, QUASI_WEALTHY_VIP, DISTINGUISHED_PETTY, NEWBIE_VILLAGE)
  * @property issuedAt - Unix timestamp when VC was issued
  * @property expiresAt - Optional Unix timestamp when VC expires
  * @property issuer - Optional DID of the VC issuer
@@ -131,7 +131,7 @@ export interface RankVerificationService {
    *
    * Validates that:
    * - Rank exists in claims
-   * - Rank is one of the allowed values (Gold, Silver, Bronze)
+   * - Rank is one of the allowed values (EARTH_OL_GRADUATE, LIFE_WINNER_S, QUASI_WEALTHY_VIP, DISTINGUISHED_PETTY, NEWBIE_VILLAGE)
    *
    * @param claims - The claims from a verified VC
    * @returns string | null - The rank value, or null if invalid/missing

@@ -9,7 +9,13 @@ CREATE TABLE vc_verification_sessions (
   auth_uri TEXT,
   verifiable_credential TEXT, -- JSON string
   extracted_did TEXT,
-  extracted_rank TEXT CHECK(extracted_rank IN ('Gold', 'Silver', 'Bronze')),
+  extracted_rank TEXT CHECK(extracted_rank IN (
+    'EARTH_OL_GRADUATE',
+    'LIFE_WINNER_S', 
+    'QUASI_WEALTHY_VIP',
+    'DISTINGUISHED_PETTY',
+    'NEWBIE_VILLAGE'
+  )),
   error TEXT,
   created_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL,

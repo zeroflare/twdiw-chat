@@ -13,13 +13,25 @@ This directory contains SQL migrations for the twdiw-chat D1 database.
 2. **0002_create_forums.sql** - Creates the `forums` table
    - Manages rank-gated forum access
    - Links to tlk.io chat channels
-   - Rank-based authorization (Gold/Silver/Bronze)
+   - Rank-based authorization (財富稱號系統: 地球OL財富畢業證書/人生勝利組S級玩家卡/準富豪VIP登錄證/尊爵不凡．小資族認證/新手村榮譽村民證)
 
 3. **0003_create_private_chat_sessions.sql** - Creates the `private_chat_sessions` table
    - Manages 1-on-1 chat sessions
    - Supports DAILY_MATCH and GROUP_INITIATED types
    - Automatic expiry tracking
    - Prevents self-chat sessions
+
+4. **0004_create_vc_verification_sessions.sql** - Creates the `vc_verification_sessions` table
+   - Manages VC (Verifiable Credential) verification sessions
+   - Links OIDC authentication to rank verification
+   - Session state tracking and expiry
+
+5. **0005_create_matching_queue.sql** - Creates the `matching_queue` table
+   - Manages daily matching queue for rank-based pairing
+   - Supports matching between 地球OL財富畢業證書持有者 and 人生勝利組S級玩家
+   - FIFO queue with expiry tracking
+   - Optimistic locking for concurrent matching operations
+   - Status tracking: PENDING → MATCHED / EXPIRED / CANCELLED
 
 ## Security Features
 
@@ -81,6 +93,8 @@ Expected output:
 member_profiles
 forums
 private_chat_sessions
+vc_verification_sessions
+matching_queue
 ```
 
 ### Check Remote Database
@@ -109,7 +123,9 @@ wrangler d1 migrations apply twdiw-chat-db --local
 Create a rollback migration:
 
 ```sql
--- migrations/0004_rollback_to_baseline.sql
+-- migrations/XXXX_rollback_to_baseline.sql
+DROP TABLE IF EXISTS matching_queue;
+DROP TABLE IF EXISTS vc_verification_sessions;
 DROP TABLE IF EXISTS private_chat_sessions;
 DROP TABLE IF EXISTS forums;
 DROP TABLE IF EXISTS member_profiles;
@@ -122,7 +138,7 @@ wrangler d1 execute twdiw-chat-db --remote --file=./migrations/0004_rollback_to_
 
 ## Development Workflow
 
-1. Make schema changes by creating new migration files (0004_xxx.sql, 0005_xxx.sql, etc.)
+1. Make schema changes by creating new migration files (0006_xxx.sql, 0007_xxx.sql, etc.)
 2. Test locally first: `wrangler d1 migrations apply twdiw-chat-db --local`
 3. Verify with test queries
 4. Apply to remote: `wrangler d1 migrations apply twdiw-chat-db --remote`
@@ -148,7 +164,9 @@ Format: `NNNN_description.sql`
   - `0001_create_member_profiles.sql`
   - `0002_create_forums.sql`
   - `0003_create_private_chat_sessions.sql`
-  - `0004_add_email_to_members.sql` (future example)
+  - `0004_create_vc_verification_sessions.sql`
+  - `0005_create_matching_queue.sql`
+  - `0006_add_email_to_members.sql` (future example)
 
 ## Troubleshooting
 

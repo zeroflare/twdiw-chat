@@ -1,6 +1,246 @@
 # Progress Log - twdiw-chat
-## Current Session - COMPLETED
-- **Start Time**: 2025-11-08 (Latest Session)
+## Current Session - COMPLETED (2025-11-08T22:02:48+08:00)
+- **Start Time**: 2025-11-08T19:47:35+08:00 
+- **Target**: Multiple fixes - OIDC login, matching system, UI improvements
+- **Phase**: Phase 3: SSCI-Lite - COMPLETED
+- **Gate**: Low
+- **Method**: Incremental fixes with immediate testing
+
+## Final Session Results - COMPLETED (2025-11-08 Latest)
+- **Summary**: Successfully implemented multiple system improvements including OIDC login, matching queue fixes, UI enhancements, and forum member count corrections
+- **Root Causes Identified & Fixed**:
+  1. OIDC login blocked in development mode
+  2. Missing matching_queue database table
+  3. Rank constraint mismatch (Chinese vs English)
+  4. Waiting users couldn't discover matches
+  5. UI displaying English rank codes instead of Chinese names
+  6. Forum member counts not reflecting adjacent rank access system
+- **Architecture Changes**: 
+  - Enabled OIDC authentication in development
+  - Implemented queue status updates instead of deletions
+  - Added comprehensive rank display mapping
+  - Fixed forum accessibility calculations
+- **Final ChangedPaths**:
+  - frontend/src/services/api.ts: Enabled OIDC login in dev mode
+  - migrations/0005_create_matching_queue.sql: Created matching queue table with English rank constraints
+  - migrations/0006_fix_matching_queue_rank_constraint.sql: Fixed rank constraints (merged into 0005)
+  - src/api/chat.ts: Added updateMatchingQueueStatus function, fixed addToMatchingQueue
+  - frontend/src/utils/rankUtils.ts: Created rank display mapping utilities
+  - frontend/src/components/auth/UserProfile.tsx: Updated to use Chinese rank names
+  - frontend/src/components/matching/DailyMatching.tsx: Added polling mechanism, Chinese rank display
+  - frontend/src/components/auth/DevLogin.tsx: Updated rank display
+  - frontend/src/components/forum/ForumList.tsx: Removed rank codes, added forum names, fixed member counts
+  - src/api/forums.ts: Updated forum descriptions and member count calculations
+- **Final AcceptanceCheck**: ✅ PASS
+  - OIDC login works in development mode
+  - Matching system functional with proper queue management
+  - Waiting users can discover matches via polling
+  - All UI displays Chinese rank names instead of English codes
+  - Forum member counts reflect adjacent rank access system
+  - Database migrations applied successfully
+  - All functionality tested and working
+- **Security Compliance**: ✅ All changes follow secure-by-default principles
+- **Rollback Available**: Individual rollback plans documented for each change
+
+## Archive Summary
+**Problems**: Multiple system issues - blocked login, broken matching, poor UX
+**Solutions**: OIDC enablement, database fixes, UI improvements, proper calculations  
+**Impact**: Fully functional matching system with proper user experience
+**Method**: Incremental fixes → immediate testing → iterative improvements
+**Status**: COMPLETED - All major issues resolved
+
+## Previous Session Results
+[Previous session content preserved...]
+
+## Phase 3 Results - Current Session (2025-11-08 Latest - Matching Queue Status Update)
+- **Summary**: Implemented updateMatchingQueueStatus function to update status='MATCHED' and set matched_with_id instead of deleting records, enabling waiting users to discover they've been matched
+- **Root Cause**: Original removeFromMatchingQueue function deleted queue records, preventing waiting users from discovering they had been matched. This created a poor user experience where one user would find a match immediately while the other had no way to know they were matched.
+- **Method**: Test-Driven Development (TDD) approach
+  - RED phase: Created comprehensive test suite with 50+ test cases validating UPDATE statement structure
+    * Tests verify function signature (db, memberId, matchedWithId parameters)
+    * Tests verify UPDATE instead of DELETE operation
+    * Tests verify status set to 'MATCHED'
+    * Tests verify matched_with_id set to partner member ID
+    * Tests verify updated_at timestamp updated
+    * Tests verify CHECK constraint compliance
+    * Tests verify integration with matching logic
+    * Tests verify data retention for analytics
+  - GREEN phase: Implemented updateMatchingQueueStatus function
+    * Created new function that UPDATEs records instead of deleting
+    * Sets status = 'MATCHED'
+    * Sets matched_with_id to partner's member ID
+    * Updates updated_at timestamp
+    * Uses parameterized queries for SQL injection prevention
+    * Includes error handling without throwing
+  - GREEN phase: Updated matching logic in POST /api/chat/match endpoint
+    * Replaced removeFromMatchingQueue call with two updateMatchingQueueStatus calls
+    * Updates BOTH users' queue records (user A matched with B, user B matched with A)
+    * Allows waiting users to poll and discover they've been matched
+    * Preserves records for future analytics (match wait times, success rates)
+  - REFACTOR phase: Code is clean and follows database schema requirements
+- **ChangedPaths**:
+  - src/api/chat.ts (modified):
+    * Added updateMatchingQueueStatus function (lines 412-422):
+      - Accepts db, memberId, matchedWithId parameters
+      - Uses UPDATE statement with status='MATCHED', matched_with_id, updated_at
+      - Returns Promise<void>
+      - Includes error handling and logging
+    * Updated POST /api/chat/match matching logic (lines 257-260):
+      - Replaced single removeFromMatchingQueue call
+      - Added two updateMatchingQueueStatus calls for both users
+      - Updates matched user's record: status='MATCHED', matched_with_id=current user
+      - Updates current user's record: status='MATCHED', matched_with_id=matched user
+      - Added explanatory comment about allowing discovery
+    * Kept removeFromMatchingQueue function for DELETE /api/chat/match cancellation (lines 424-433)
+  - tests/backend/api/chat_updateMatchingQueueStatus.test.ts (created):
+    * 50+ test cases validating UPDATE statement correctness
+    * Function signature and parameters tests
+    * SQL UPDATE statement validation tests
+    * Database constraints validation (CHECK constraints)
+    * Integration with matching logic tests
+    * Error handling and security tests
+    * Data retention for analytics tests
+  - progress.md (this file - updated with current session results)
+- **AcceptanceCheck**: yes - updateMatchingQueueStatus function and matching logic now:
+  - Updates queue records instead of deleting them
+  - Sets status='MATCHED' for both matched users
+  - Sets matched_with_id to partner's member ID for both users
+  - Updates updated_at timestamp
+  - Satisfies CHECK constraint: (status='MATCHED' AND matched_with_id IS NOT NULL)
+  - Allows waiting users to poll their queue record and discover match
+  - Preserves data for future analytics (match wait times, patterns)
+  - Uses parameterized queries (SQL injection prevention)
+  - Handles errors gracefully without throwing
+  - Both users can discover the match regardless of who found whom first
+- **RollbackPlan**:
+  1. Revert src/api/chat.ts POST /api/chat/match matching logic (lines 257-260):
+     - Replace two updateMatchingQueueStatus calls with single removeFromMatchingQueue call
+     - Remove explanatory comment
+     - Restore original: await removeFromMatchingQueue(c.env.DB, matchedMember.getId());
+  2. Delete updateMatchingQueueStatus function from src/api/chat.ts (lines 412-422)
+  3. Delete tests/backend/api/chat_updateMatchingQueueStatus.test.ts
+  4. Revert progress.md to previous version
+
+## Phase 3 Results - Previous Session (2025-11-08 - Chat API addToMatchingQueue Fix)
+- **Summary**: Fixed addToMatchingQueue function in src/api/chat.ts to include updated_at field in INSERT statement
+- **Root Cause**: The addToMatchingQueue function was missing updated_at field in both the SQL INSERT column list and bind parameters, causing potential CHECK constraint violations (updated_at >= created_at) defined in migration 0005_create_matching_queue.sql
+- **Method**: Test-Driven Development (TDD) approach
+  - RED phase: Created comprehensive test suite with 25+ test cases validating INSERT statement structure
+  - Tests verify updated_at field presence in column list
+  - Tests verify bind parameter count matches column count (6 parameters)
+  - Tests verify same timestamp used for both created_at and updated_at
+  - Tests verify CHECK constraint compliance (updated_at >= created_at)
+  - GREEN phase: Fixed addToMatchingQueue function
+    * Added updated_at to SQL INSERT column list
+    * Changed from Date.now() called twice to const now = Date.now() for consistent timestamp
+    * Added updated_at to bind parameters with same value as created_at
+    * Updated bind parameter count from 5 to 6
+  - REFACTOR phase: Code is clean and follows database schema requirements
+- **ChangedPaths**:
+  - src/api/chat.ts (modified - lines 394-410):
+    * Added const now = Date.now() to capture single timestamp (line 397)
+    * Updated SQL INSERT to include updated_at column (line 402)
+    * Changed VALUES from 5 to 6 placeholders (line 403)
+    * Updated bind() to include now for both created_at and updated_at (line 405)
+    * Updated expiresAt calculation to use now variable (line 398)
+  - tests/backend/api/chat_matching_queue.test.ts (created):
+    * 25+ test cases validating INSERT statement correctness
+    * Tests for column list validation (updated_at included)
+    * Tests for bind parameter order and count
+    * Tests for timestamp consistency
+    * Tests for CHECK constraint compliance
+    * Tests for integration with matching_queue schema
+  - progress.md (this file - updated with current session results)
+- **AcceptanceCheck**: yes - addToMatchingQueue function now:
+  - Includes updated_at in SQL INSERT column list
+  - Binds updated_at value with same timestamp as created_at
+  - Satisfies CHECK constraint: updated_at >= created_at (they are equal on INSERT)
+  - Matches matching_queue table schema (all required NOT NULL fields provided)
+  - Uses single timestamp for consistency (no timing gaps between created_at and updated_at)
+  - Maintains INSERT OR REPLACE behavior for idempotent queue additions
+- **RollbackPlan**:
+  1. Revert src/api/chat.ts addToMatchingQueue function to remove updated_at:
+     - Remove const now = Date.now() and restore Date.now() inline call
+     - Remove updated_at from INSERT column list
+     - Change VALUES from 6 to 5 placeholders
+     - Remove updated_at parameter from bind() call
+  2. Delete tests/backend/api/chat_matching_queue.test.ts
+  3. Revert progress.md to previous version
+
+## Phase 2 Results - Previous Session (2025-11-08 - Matching Queue Migration)
+- **Summary**: Created matching_queue table migration for rank-based matching between 地球OL財富畢業證書持有者 and 人生勝利組S級玩家
+- **Root Cause**: Missing database table to support daily matching queue functionality
+- **Method**: Test-Driven Development (TDD) approach
+  - Created migration file following existing naming convention (0005_create_matching_queue.sql)
+  - Defined comprehensive schema with all required columns (id, member_id, rank, status, matched_with_id, etc.)
+  - Added security constraints (CHECK for rank/status, timestamp validation, self-match prevention)
+  - Created performance indexes (single-column, composite, and partial indexes)
+  - Wrote comprehensive test suite validating schema structure and constraints
+  - Updated migrations/README.md to document new table
+- **ChangedPaths**:
+  - migrations/0005_create_matching_queue.sql (created):
+    * Table with 9 columns: id, member_id, rank, status, matched_with_id, version, created_at, updated_at, expires_at
+    * Rank CHECK constraint supporting all 5 財富稱號系統 ranks
+    * Status CHECK constraint: PENDING, MATCHED, EXPIRED, CANCELLED
+    * Business logic constraints: self-match prevention, status-matched_with_id relationship
+    * Optimistic locking with version field (default 1)
+    * 6 single-column indexes for frequent queries
+    * 5 composite indexes for matching operations
+    * Partial index for PENDING matches (FIFO optimization)
+  - tests/backend/migrations/matching_queue_migration.test.ts (created):
+    * 25+ test cases validating table structure, constraints, and indexes
+    * Tests for security constraints (non-empty strings, positive integers, timestamp ordering)
+    * Tests for business logic (rank validation, status transitions, self-match prevention)
+    * Tests for performance indexes (single, composite, partial)
+    * Integration tests for migration naming and sequencing
+  - migrations/README.md (modified):
+    * Added migration 0005 documentation with description and features
+    * Updated expected table list to include matching_queue
+    * Updated rollback examples to include new table
+    * Updated development workflow with next migration number (0006)
+    * Added migration file example for 0005
+  - progress.md (this file - updated with current session results)
+- **AcceptanceCheck**: yes - Migration 0005 creates matching_queue table with:
+  - All required columns (id, member_id, rank, created_at, expires_at) as specified in task
+  - Proper indexes for performance optimization
+  - Security constraints following secure-by-default principles
+  - Support for matching between 地球OL財富畢業證書持有者 and 人生勝利組S級玩家
+  - Integration with existing migration system (sequential numbering, naming convention)
+  - Comprehensive test coverage validating schema correctness
+  - Documentation updated in migrations/README.md
+- **RollbackPlan**:
+  1. Delete migrations/0005_create_matching_queue.sql
+  2. Delete tests/backend/migrations/matching_queue_migration.test.ts
+  3. Restore migrations/README.md to previous version (remove migration 0005 references)
+  4. Revert progress.md to previous version
+  5. If already applied to database: wrangler d1 execute twdiw-chat-db --local --command="DROP TABLE IF EXISTS matching_queue;"
+
+## Phase 2 Results - Previous Session (2025-11-08 - OIDC Login Dev Mode Enable)
+- **Summary**: Removed isDev guard from login() method to enable OIDC authentication testing in development mode
+- **Root Cause**: login() method was blocked in development mode, forcing use of mock login only
+- **Method**: Test-Driven Development (TDD) approach with targeted refactoring
+- **ChangedPaths**:
+  - frontend/src/services/api.ts (modified):
+    * Removed isDev guard check from login() method (lines 102-107)
+    * Removed error return "Use mock login in development mode"
+    * Updated comments to clarify both OIDC and mock login are available in dev mode
+    * Kept mockLogin() method unchanged and available (lines 88-93)
+    * login() now calls /auth/login endpoint regardless of environment
+- **AcceptanceCheck**: yes - api.ts now:
+  - login() method accessible in both development and production modes
+  - Enables OIDC authentication flow testing in development
+  - mockLogin() remains available for quick testing in dev mode
+  - Developers can choose between real OIDC flow or mock authentication
+  - Comments clearly document both options
+- **RollbackPlan**:
+  1. Restore isDev guard in login() method
+  2. Add back error return: { error: 'Use mock login in development mode' }
+  3. Remove new comments about dual authentication options
+  4. Restore original comment: "// In development, show mock login options instead"
+  5. Revert progress.md to previous version
+
+## Previous Session - COMPLETED
+- **Start Time**: 2025-11-08 (Previous Session)
 - **Target**: Fix chat room loading and nickname display issues
 - **Phase**: Phase 3: SSCI-Lite - COMPLETED
 - **Gate**: Low

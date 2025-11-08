@@ -9,6 +9,7 @@ import {
   VerificationResult, 
   VerificationStatus 
 } from '../../domain/services/RankVerificationService';
+import { Rank } from '../../domain/entities/MemberProfile';
 
 export interface TwdiwQRCodeResponse {
   transactionId: string;
@@ -184,11 +185,11 @@ export class VCVerificationService implements RankVerificationService {
     const rankStr = rank.toString().toLowerCase();
     
     if (rankStr.includes('gold') || rankStr.includes('金') || rankStr === '1') {
-      return 'Gold';
+      return Rank.EARTH_OL_GRADUATE;
     } else if (rankStr.includes('silver') || rankStr.includes('銀') || rankStr === '2') {
-      return 'Silver';
+      return Rank.LIFE_WINNER_S;
     } else if (rankStr.includes('bronze') || rankStr.includes('銅') || rankStr === '3') {
-      return 'Bronze';
+      return Rank.NEWBIE_VILLAGE;
     } else {
       throw new Error(`Unknown rank value: ${rank}`);
     }

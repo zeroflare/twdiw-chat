@@ -12,18 +12,21 @@ export enum MemberStatus {
 
 /**
  * Valid rank values that can be derived from a Rank Card VC.
+ * Based on 財富稱號 (Wealth Titles) system.
  */
 export enum Rank {
-  GOLD = 'Gold',
-  SILVER = 'Silver',
-  BRONZE = 'Bronze'
+  EARTH_OL_GRADUATE = 'EARTH_OL_GRADUATE',           // 地表頂級投資俱樂部
+  LIFE_WINNER_S = 'LIFE_WINNER_S',                   // 人生勝利組研習社  
+  QUASI_WEALTHY_VIP = 'QUASI_WEALTHY_VIP',           // 準富豪交流會
+  DISTINGUISHED_PETTY = 'DISTINGUISHED_PETTY',       // 小資族奮鬥基地
+  NEWBIE_VILLAGE = 'NEWBIE_VILLAGE'                  // 新手村薪水冒險團
 }
 
 /**
  * Rank hierarchy for access control.
  * Higher index = higher rank.
  */
-const RANK_HIERARCHY: Rank[] = [Rank.BRONZE, Rank.SILVER, Rank.GOLD];
+const RANK_HIERARCHY: Rank[] = [Rank.NEWBIE_VILLAGE, Rank.DISTINGUISHED_PETTY, Rank.QUASI_WEALTHY_VIP, Rank.LIFE_WINNER_S, Rank.EARTH_OL_GRADUATE];
 
 /**
  * Properties required to create a new MemberProfile.
@@ -242,7 +245,7 @@ export class MemberProfile {
    * Access control rules:
    * - GENERAL (unverified) members cannot access any ranked forum
    * - VERIFIED members can access forums at their rank or below
-   * - Rank hierarchy: Gold > Silver > Bronze
+   * - Rank hierarchy: 地球OL財富畢業證書 > 人生勝利組S級玩家卡 > 準富豪VIP登錄證 > 尊爵不凡．小資族認證 > 新手村榮譽村民證
    *
    * @param forumRank - Required rank for the forum
    * @returns true if member can access, false otherwise
@@ -259,12 +262,21 @@ export class MemberProfile {
       return false;
     }
 
-    // Check rank hierarchy
-    const memberRankLevel = RANK_HIERARCHY.indexOf(this.derivedRank);
-    const forumRankLevel = RANK_HIERARCHY.indexOf(forumRank as Rank);
-
-    // Member can access if their rank is >= forum's required rank
-    return memberRankLevel >= forumRankLevel;
+    // Implement adjacent rank access (鄰近階級制)
+    switch (this.derivedRank) {
+      case Rank.EARTH_OL_GRADUATE:
+        return [Rank.EARTH_OL_GRADUATE, Rank.LIFE_WINNER_S].includes(forumRank as Rank);
+      case Rank.LIFE_WINNER_S:
+        return [Rank.EARTH_OL_GRADUATE, Rank.LIFE_WINNER_S, Rank.QUASI_WEALTHY_VIP].includes(forumRank as Rank);
+      case Rank.QUASI_WEALTHY_VIP:
+        return [Rank.LIFE_WINNER_S, Rank.QUASI_WEALTHY_VIP, Rank.DISTINGUISHED_PETTY].includes(forumRank as Rank);
+      case Rank.DISTINGUISHED_PETTY:
+        return [Rank.QUASI_WEALTHY_VIP, Rank.DISTINGUISHED_PETTY, Rank.NEWBIE_VILLAGE].includes(forumRank as Rank);
+      case Rank.NEWBIE_VILLAGE:
+        return [Rank.DISTINGUISHED_PETTY, Rank.NEWBIE_VILLAGE].includes(forumRank as Rank);
+      default:
+        return false;
+    }
   }
 
   /**

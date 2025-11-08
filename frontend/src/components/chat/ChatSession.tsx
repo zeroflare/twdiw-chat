@@ -75,6 +75,38 @@ export function ChatSession() {
   useEffect(() => {
     if (!chatData) return;
 
+    // Clear tlk.io related cookies and storage to prevent session conflicts
+    const clearTlkIoSession = () => {
+      // Clear cookies
+      document.cookie.split(";").forEach(cookie => {
+        const eqPos = cookie.indexOf("=");
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        if (name.toLowerCase().includes('tlk')) {
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.tlk.io`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        }
+      });
+
+      // Clear localStorage and sessionStorage
+      try {
+        Object.keys(localStorage).forEach(key => {
+          if (key.toLowerCase().includes('tlk')) {
+            localStorage.removeItem(key);
+          }
+        });
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.toLowerCase().includes('tlk')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.log('Storage cleanup failed:', e);
+      }
+    };
+
+    // Clear session before loading
+    clearTlkIoSession();
+
     // Wait for DOM to be ready
     setTimeout(() => {
       // Check if script is already loaded

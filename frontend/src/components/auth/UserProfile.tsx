@@ -1,23 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
-
-const getRankColor = (rank?: string) => {
-  switch (rank) {
-    case 'Gold': return 'text-yellow-500';
-    case 'Silver': return 'text-gray-400';
-    case 'Bronze': return 'text-orange-600';
-    default: return 'text-gray-500';
-  }
-};
-
-const getRankBadge = (rank?: string) => {
-  switch (rank) {
-    case 'Gold': return 'bg-yellow-100 text-yellow-800';
-    case 'Silver': return 'bg-gray-100 text-gray-800';
-    case 'Bronze': return 'bg-orange-100 text-orange-800';
-    default: return 'bg-gray-100 text-gray-600';
-  }
-};
+import { getRankDisplayName, getRankBadge } from '../../utils/rankUtils';
 
 export function UserProfile() {
   const { user } = useAuth();
@@ -54,7 +37,7 @@ export function UserProfile() {
             <label className="block text-sm font-medium text-gray-700">等級</label>
             <div className="mt-1">
               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRankBadge(user.rank)}`}>
-                {user.rank}
+                {getRankDisplayName(user.rank)}
               </span>
             </div>
           </div>

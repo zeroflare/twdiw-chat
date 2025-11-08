@@ -10,7 +10,13 @@ CREATE TABLE IF NOT EXISTS member_profiles (
     gender TEXT,  -- Encrypted at rest (application-level encryption)
     interests TEXT,  -- Encrypted at rest (application-level encryption), stored as JSON array
     linked_vc_did TEXT UNIQUE,
-    derived_rank TEXT CHECK (derived_rank IS NULL OR derived_rank IN ('Gold', 'Silver', 'Bronze')),
+    derived_rank TEXT CHECK (derived_rank IS NULL OR derived_rank IN (
+        'EARTH_OL_GRADUATE',
+        'LIFE_WINNER_S',
+        'QUASI_WEALTHY_VIP', 
+        'DISTINGUISHED_PETTY',
+        'NEWBIE_VILLAGE'
+    )),
     version INTEGER NOT NULL DEFAULT 1,  -- Optimistic locking
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,

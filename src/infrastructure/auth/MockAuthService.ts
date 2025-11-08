@@ -4,13 +4,14 @@
  */
 
 import { JWTService } from './JWTService';
+import { Rank } from '../../domain/entities/MemberProfile';
 
 export interface MockUser {
   id: string;
   oidcSubjectId: string;
   nickname: string;
   status: 'GENERAL' | 'VERIFIED';
-  rank?: 'Gold' | 'Silver' | 'Bronze';
+  rank?: Rank;
   linkedVcDid?: string;
 }
 
@@ -28,26 +29,42 @@ export class MockAuthService {
     {
       id: 'user-2', 
       oidcSubjectId: 'mock-oidc-2',
-      nickname: '金牌會員',
+      nickname: '地球OL財富畢業證書持有者',
       status: 'VERIFIED',
-      rank: 'Gold',
-      linkedVcDid: 'did:example:gold-member'
+      rank: Rank.EARTH_OL_GRADUATE,
+      linkedVcDid: 'did:example:earth-ol-graduate'
     },
     {
       id: 'user-3',
       oidcSubjectId: 'mock-oidc-3', 
-      nickname: '銀牌會員',
+      nickname: '人生勝利組S級玩家',
       status: 'VERIFIED',
-      rank: 'Silver',
-      linkedVcDid: 'did:example:silver-member'
+      rank: Rank.LIFE_WINNER_S,
+      linkedVcDid: 'did:example:life-winner-s'
     },
     {
       id: 'user-4',
       oidcSubjectId: 'mock-oidc-4',
-      nickname: '銅牌會員', 
+      nickname: '準富豪VIP會員', 
       status: 'VERIFIED',
-      rank: 'Bronze',
-      linkedVcDid: 'did:example:bronze-member'
+      rank: Rank.QUASI_WEALTHY_VIP,
+      linkedVcDid: 'did:example:quasi-wealthy-vip'
+    },
+    {
+      id: 'user-5',
+      oidcSubjectId: 'mock-oidc-5',
+      nickname: '尊爵不凡小資族',
+      status: 'VERIFIED', 
+      rank: Rank.DISTINGUISHED_PETTY,
+      linkedVcDid: 'did:example:distinguished-petty'
+    },
+    {
+      id: 'user-6',
+      oidcSubjectId: 'mock-oidc-6',
+      nickname: '新手村榮譽村民',
+      status: 'VERIFIED',
+      rank: Rank.NEWBIE_VILLAGE,
+      linkedVcDid: 'did:example:newbie-village'
     }
   ];
 
@@ -80,7 +97,7 @@ export class MockAuthService {
   }
 
   // Mock VC verification for testing
-  mockVCVerification(userId: string, rank: 'Gold' | 'Silver' | 'Bronze') {
+  mockVCVerification(userId: string, rank: Rank) {
     return {
       transactionId: `mock-tx-${Date.now()}`,
       qrCodeUrl: `data:image/svg+xml;base64,${btoa(`
@@ -101,7 +118,7 @@ export class MockAuthService {
   }
 
   // Simulate VC verification completion
-  completeMockVCVerification(transactionId: string, rank: 'Gold' | 'Silver' | 'Bronze') {
+  completeMockVCVerification(transactionId: string, rank: Rank) {
     return {
       transactionId,
       status: 'completed' as const,
