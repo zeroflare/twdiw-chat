@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import api from '../../services/api';
+import { api } from '../../services/api';
 
 const UserSetup: React.FC = () => {
   const { user, refreshUser } = useAuth();
@@ -93,5 +93,7 @@ const UserSetup: React.FC = () => {
     </div>
   );
 };
+
+export { UserSetup };
 
 export default UserSetup;
