@@ -17,7 +17,14 @@ TWDIW_API_TOKEN = "O1DhqxTYuxLh43UvyMuitH1xufPGlijb"
 
 # Bindings for databases, KV namespaces, etc.
 # We will define our D1 database here for storing user profiles and sessions.
+# To create the database locally: wrangler d1 create twdiw-chat-db
+# After creation, replace the database_id below with the actual ID from the output
 [[d1_databases]]
 binding = "DB"
 database_name = "twdiw-chat-db"
-database_id = "<YOUR_DATABASE_ID>" # This will be filled in after we create the DB
+database_id = "00000000-0000-0000-0000-000000000000"  # Placeholder - update after creating DB
+
+# D1 Migrations Configuration
+# Migrations are stored in ./migrations directory
+# To apply migrations locally: wrangler d1 migrations apply twdiw-chat-db --local
+# To apply migrations to remote: wrangler d1 migrations apply twdiw-chat-db --remote

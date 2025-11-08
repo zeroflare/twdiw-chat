@@ -1,0 +1,5 @@
+- **Manual Steps Required**:
+  - Run `wrangler d1 create twdiw-chat-db` to create database
+  - Update wrangler.toml with actual database_id
+  - Run `wrangler d1 migrations apply twdiw-chat-db --local` to apply migrations
+  - Run `bash migrations/test-migrations.sh` for validation
