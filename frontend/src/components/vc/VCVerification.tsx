@@ -148,6 +148,7 @@ export function VCVerification() {
   );
 
   const startVerification = async () => {
+    const hadExistingSession = Boolean(verification);
     setLoading(true);
     setError(null);
     stopPolling();
@@ -156,7 +157,7 @@ export function VCVerification() {
     setPollIntervalMs(15000);
 
     try {
-      const response = await api.startVCVerification();
+      const response = await api.startVCVerification({ force: hadExistingSession });
       if (response.error) {
         throw new Error(response.error);
       }

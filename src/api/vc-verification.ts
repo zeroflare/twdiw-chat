@@ -39,6 +39,7 @@ app.post('/start', authMiddleware(), async (c) => {
   try {
     const user = c.get('user');
     const memberId = user.memberId;
+    const forceRestart = c.req.query('force') === 'true';
 
     // Rate limiting
     if (!checkRateLimit(memberId)) {
@@ -51,7 +52,9 @@ app.post('/start', authMiddleware(), async (c) => {
     const now = Date.now();
 
     if (existingSession && existingSession.status === 'pending') {
-      if (existingSession.expiresAt > now) {
+      const isExpired = existingSession.expiresAt <= now;
+
+      if (!isExpired && !forceRestart) {
         return c.json({
           transactionId: existingSession.transactionId,
           qrCodeUrl: existingSession.qrCodeUrl,
@@ -63,7 +66,7 @@ app.post('/start', authMiddleware(), async (c) => {
 
       await sessionStore.updateSession(existingSession.transactionId, {
         status: 'expired',
-        error: 'Verification session expired before completion',
+        error: forceRestart ? 'Verification session restarted by user' : 'Verification session expired before completion',
         completedAt: now
       });
     }

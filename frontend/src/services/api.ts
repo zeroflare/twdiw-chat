@@ -134,8 +134,9 @@ class ApiService {
   }
 
   // VC Verification
-  async startVCVerification() {
-    return this.request<VerificationResult>('/vc/verify/start', {
+  async startVCVerification(options?: { force?: boolean }) {
+    const query = options?.force ? '?force=true' : '';
+    return this.request<VerificationResult>(`/vc/verify/start${query}`, {
       method: 'POST',
     });
   }
