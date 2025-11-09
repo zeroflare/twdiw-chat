@@ -17,10 +17,27 @@ export interface TwdiwQRCodeResponse {
   authUri: string;
 }
 
+export interface TwdiwCredentialClaim {
+  ename?: string;
+  cname?: string;
+  value?: string;
+}
+
+export interface TwdiwCredentialData {
+  credentialType?: string;
+  claims?: TwdiwCredentialClaim[];
+}
+
 export interface TwdiwStatusResponse {
-  status: 'pending' | 'completed' | 'failed' | 'expired';
-  verifiablePresentation?: any;
+  status?: 'pending' | 'completed' | 'failed' | 'expired'; // legacy
+  verifiablePresentation?: any; // legacy payload
   error?: string;
+  verifyResult?: boolean;
+  resultDescription?: string;
+  transactionId?: string;
+  data?: TwdiwCredentialData[];
+  errorCode?: string;
+  message?: string;
 }
 
 export class VCVerificationService implements RankVerificationService {
@@ -39,8 +56,9 @@ export class VCVerificationService implements RankVerificationService {
   }
 
   private generateTransactionId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return crypto.randomUUID();
+    const globalCrypto = typeof globalThis !== 'undefined' ? (globalThis as any).crypto : undefined;
+    if (globalCrypto && typeof globalCrypto.randomUUID === 'function') {
+      return globalCrypto.randomUUID();
     }
 
     // Fallback UUIDv4 implementation (RFC4122 compliant enough for sandbox)
@@ -108,51 +126,118 @@ export class VCVerificationService implements RankVerificationService {
 
       const data: TwdiwStatusResponse = await response.json();
 
-      switch (data.status) {
-        case 'pending':
-          return {
-            transactionId,
-            status: VerificationStatus.PENDING,
-            pollInterval: 5000
-          };
+      // Legacy status field support
+      if (data.status) {
+        switch (data.status) {
+          case 'pending':
+            return {
+              transactionId,
+              status: VerificationStatus.PENDING,
+              pollInterval: 5000
+            };
 
-        case 'completed':
-          if (!data.verifiablePresentation) {
-            throw new Error('Missing verifiable presentation in completed response');
+          case 'completed': {
+            const claims = this.extractRankFromResponse(data);
+            return {
+              transactionId,
+              status: VerificationStatus.COMPLETED,
+              verifiableCredential: data.verifiablePresentation ?? data,
+              extractedClaims: claims
+            };
           }
 
-          const claims = this.extractRankFromClaims(data.verifiablePresentation);
+          case 'failed':
+            return {
+              transactionId,
+              status: VerificationStatus.FAILED,
+              error: data.error || 'Verification failed'
+            };
+
+          case 'expired':
+            return {
+              transactionId,
+              status: VerificationStatus.EXPIRED,
+              error: 'Verification session expired'
+            };
+
+          default:
+            throw new Error(`Unknown verification status: ${data.status}`);
+        }
+      }
+
+      if (typeof data.verifyResult === 'boolean') {
+        if (data.verifyResult) {
+          const claims = this.extractRankFromResponse(data);
           return {
-            transactionId,
+            transactionId: data.transactionId || transactionId,
             status: VerificationStatus.COMPLETED,
-            verifiableCredential: data.verifiablePresentation,
+            verifiableCredential: data.verifiablePresentation ?? data,
             extractedClaims: claims
           };
+        }
 
-        case 'failed':
-          return {
-            transactionId,
-            status: VerificationStatus.FAILED,
-            error: data.error || 'Verification failed'
-          };
+        const description = (data.resultDescription || data.message || '').toLowerCase();
+        const isExpired = description.includes('expired') || data.errorCode === 'expired';
 
-        case 'expired':
-          return {
-            transactionId,
-            status: VerificationStatus.EXPIRED,
-            error: 'Verification session expired'
-          };
-
-        default:
-          throw new Error(`Unknown verification status: ${data.status}`);
+        return {
+          transactionId: data.transactionId || transactionId,
+          status: isExpired ? VerificationStatus.EXPIRED : VerificationStatus.FAILED,
+          error: data.resultDescription || data.message || (isExpired ? 'Verification session expired' : 'Verification failed')
+        };
       }
+
+      throw new Error(`Unknown verification status: ${JSON.stringify(data)}`);
     } catch (error) {
       console.error('VC verification status check failed:', error);
       throw new Error('Failed to check verification status');
     }
   }
 
-  extractRankFromClaims(verifiablePresentation: any): { did: string; rank: string } {
+  private extractRankFromResponse(response: TwdiwStatusResponse): { did: string; rank: string } {
+    if (response.verifiablePresentation) {
+      return this.extractRankFromPresentation(response.verifiablePresentation);
+    }
+
+    const fromData = this.extractRankFromCredentialData(response.data);
+    if (fromData) {
+      return fromData;
+    }
+
+    throw new Error('Unable to extract rank from verification response');
+  }
+
+  private extractRankFromCredentialData(data?: TwdiwCredentialData[]): { did: string; rank: string } | null {
+    if (!data?.length) {
+      return null;
+    }
+
+    for (const credential of data) {
+      if (!credential.claims?.length) continue;
+
+      const claims = credential.claims;
+
+      const didClaim = claims.find((claim) => (claim.value?.startsWith('did:')) ||
+        claim.ename?.toLowerCase() === 'did' ||
+        claim.ename?.toLowerCase() === 'holderdid');
+
+      const rankClaim = claims.find((claim) => {
+        const name = claim.ename?.toLowerCase() || '';
+        const cname = claim.cname || '';
+        return name.includes('rank') || name.includes('level') || cname.includes('等級');
+      });
+
+      if (didClaim?.value && rankClaim?.value) {
+        return {
+          did: didClaim.value,
+          rank: this.normalizeRank(rankClaim.value)
+        };
+      }
+    }
+
+    return null;
+  }
+
+  private extractRankFromPresentation(verifiablePresentation: any): { did: string; rank: string } {
     try {
       // Navigate through VP structure to find VC
       const vp = verifiablePresentation;
