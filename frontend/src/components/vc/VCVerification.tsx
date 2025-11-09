@@ -332,7 +332,7 @@ export function VCVerification() {
             </div>
 
             <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-800">
-              <p className="font-medium text-gray-900">掃描完成後再查詢結果，避免過早打擾 workflow</p>
+              <p className="font-medium text-gray-900">掃描完成後再查詢結果</p>
               <p className="mt-1 text-xs text-gray-500">
                 送出後按下方按鈕查詢一次即可，不會自動輪詢。
               </p>
