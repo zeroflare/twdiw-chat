@@ -10,6 +10,7 @@ import { D1MemberProfileRepository } from '../infrastructure/repositories/D1Memb
 import { EncryptionService } from '../infrastructure/security/EncryptionService';
 import { MemberProfile } from '../domain/entities/MemberProfile';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
+import { createLogSanitizer, LogLevel } from '../infrastructure/security/LogSanitizer';
 
 const app = new Hono();
 
@@ -37,8 +38,9 @@ function checkAuthRateLimit(identifier: string, maxRequests = 10, windowMs = 600
 // GET /api/auth/login - Initiate OIDC login
 app.get('/login', async (c) => {
   try {
+    const sanitizer = createLogSanitizer(c.env);
     const clientIP = c.req.header('CF-Connecting-IP') || 'unknown';
-    
+
     // Rate limiting
     if (!checkAuthRateLimit(clientIP)) {
       return c.json({ error: 'Rate limit exceeded' }, 429);
@@ -52,25 +54,26 @@ app.get('/login', async (c) => {
       state: authRequest.state,
       codeVerifier: authRequest.codeVerifier
     });
-    
-    console.log('Storing OIDC state in KV:', {
-      state: authRequest.state.substring(0, 10) + '...'
+
+    const logData = sanitizer.sanitize(LogLevel.INFO, 'Storing OIDC state in KV', {
+      state: authRequest.state
     });
-    
+    if (logData.shouldLog) {
+      console.log(logData.message, logData.data);
+    }
+
     // Store with URL state as key for direct lookup
     const urlStateKey = `url_state:${authRequest.state}`;
     if (c.env.KV) {
       await c.env.KV.put(urlStateKey, stateData, { expirationTtl: 1200 });
-      console.log('Stored in KV with URL key:', urlStateKey);
+      console.log('Stored in KV with URL key');
     } else {
       console.log('KV not available');
     }
 
     return c.json({
       authUrl: authRequest.authUrl,
-      message: 'Redirect to authUrl to complete login',
-      // Debug: Include state for verification
-      debugState: authRequest.state
+      message: 'Redirect to authUrl to complete login'
     });
 
   } catch (error) {
@@ -82,11 +85,19 @@ app.get('/login', async (c) => {
 // GET /api/auth/callback - OIDC callback handler
 app.get('/callback', async (c) => {
   try {
+    const sanitizer = createLogSanitizer(c.env);
     const code = c.req.query('code');
     const state = c.req.query('state');
     const error = c.req.query('error');
 
-    console.log('OIDC Callback received:', { code: !!code, state: !!state, error });
+    const logData = sanitizer.sanitize(LogLevel.INFO, 'OIDC Callback received', {
+      hasCode: !!code,
+      hasState: !!state,
+      error
+    });
+    if (logData.shouldLog) {
+      console.log(logData.message, logData.data);
+    }
 
     if (error) {
       const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
@@ -100,22 +111,22 @@ app.get('/callback', async (c) => {
 
     // Retrieve stored PKCE data from KV using URL state parameter
     let storedData = null;
-    
-    console.log('Looking for OIDC state in KV:', { 
-      state: state,
+
+    const kvLogData = sanitizer.sanitize(LogLevel.DEBUG, 'Looking for OIDC state in KV', {
+      state,
       hasKV: !!c.env.KV
     });
-    
+    if (kvLogData.shouldLog) {
+      console.log(kvLogData.message, kvLogData.data);
+    }
+
     // Get stored data from KV using URL state parameter
     if (state && c.env.KV) {
       const urlStateKey = `url_state:${state}`;
       storedData = await c.env.KV.get(urlStateKey);
-      console.log('Retrieved from KV:', { 
-        hasData: !!storedData,
-        kvKey: urlStateKey
-      });
+      console.log('Retrieved from KV:', { hasData: !!storedData });
     }
-    
+
     console.log('Stored OIDC data:', { hasStoredData: !!storedData });
 
     if (!storedData) {
@@ -135,12 +146,15 @@ app.get('/callback', async (c) => {
 
     const { state: storedState, codeVerifier } = parsedData;
 
-    // Debug: Log state comparison
-    console.log('State comparison:', { 
-      urlState: state, 
-      cookieState: storedState, 
-      match: state === storedState 
+    // Security audit: state validation
+    const stateLogData = sanitizer.sanitize(LogLevel.SECURITY, 'State validation', {
+      state,
+      cookieState: storedState,
+      match: state === storedState
     });
+    if (stateLogData.shouldLog) {
+      console.log(stateLogData.message, stateLogData.data);
+    }
 
     // Clean up KV storage
     if (state && c.env.KV) {
@@ -157,7 +171,14 @@ app.get('/callback', async (c) => {
     // Verify ID token
     console.log('Verifying ID token...');
     const claims = await oidcService.verifyIDToken(tokens.id_token);
-    console.log('ID token verified, claims:', { name: claims.name, email: claims.email });
+
+    const claimsLogData = sanitizer.sanitize(LogLevel.INFO, 'ID token verified', {
+      name: claims.name,
+      email: claims.email
+    });
+    if (claimsLogData.shouldLog) {
+      console.log(claimsLogData.message, claimsLogData.data);
+    }
 
     // Use email as subject ID since SSO server doesn't provide standard 'sub' field
     const subjectId = claims.email || claims.sub || 'unknown';
@@ -172,12 +193,16 @@ app.get('/callback', async (c) => {
 
     if (!member) {
       console.log('Creating new member...');
-      console.log('Member data to create:', {
+
+      const memberDataLog = sanitizer.sanitize(LogLevel.DEBUG, 'Member data to create', {
         oidcSubjectId: subjectId,
         nickname: claims.name || claims.email || 'User',
         email: claims.email
       });
-      
+      if (memberDataLog.shouldLog) {
+        console.log(memberDataLog.message, memberDataLog.data);
+      }
+
       try {
         // Create new member profile
         member = MemberProfile.create({
@@ -186,7 +211,7 @@ app.get('/callback', async (c) => {
           gender: null,
           interests: null
         });
-        
+
         console.log('Member object created, attempting save...');
         await memberRepo.save(member);
         console.log('New member created successfully');
@@ -202,7 +227,10 @@ app.get('/callback', async (c) => {
     console.log('Creating session token...');
     const sessionToken = await oidcService.createSessionToken(subjectId, member.getId());
 
-    console.log('Login successful for user:', subjectId);
+    sanitizer.securityAudit('LOGIN_SUCCESS', {
+      oidcSubjectId: subjectId,
+      memberId: member.getId()
+    });
 
     // Return JWT token to frontend via URL redirect
     const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
@@ -326,7 +354,7 @@ app.get('/me', authMiddleware(), async (c) => {
     // Get fresh member data
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
     const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
-    const member = await memberRepo.findById(user.memberId);
+    const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
 
     if (!member) {
       return c.json({ error: 'Member not found' }, 404);

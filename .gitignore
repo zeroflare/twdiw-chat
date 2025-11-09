@@ -173,5 +173,4 @@ wrangler.jsonc
 
 # AI-assisted files
 .gemini/
-.specify/
 doc/沙箱 API 文件/沙箱資訊.md

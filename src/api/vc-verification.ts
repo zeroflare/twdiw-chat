@@ -8,7 +8,9 @@ import { Rank } from '../domain/entities/MemberProfile';
 import { VCVerificationService } from '../infrastructure/services/VCVerificationService';
 import { VCVerificationSessionStore } from '../infrastructure/services/VCVerificationSessionStore';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
+import { EncryptionService } from '../infrastructure/security/EncryptionService';
 import { authMiddleware } from '../middleware/auth';
+import { createLogSanitizer, LogLevel } from '../infrastructure/security/LogSanitizer';
 
 const app = new Hono();
 const SESSION_TTL_MS = 5 * 60 * 1000;
@@ -148,11 +150,15 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
     }
 
     if (session.status !== 'pending') {
-      console.log('[VC verification] returning cached session result', {
+      const sanitizer = createLogSanitizer(c.env);
+      const logData = sanitizer.sanitize(LogLevel.INFO, '[VC verification] returning cached session result', {
         transactionId,
         status: session.status,
         hasExtractedClaims: Boolean(session.extractedDid && session.extractedRank)
       });
+      if (logData.shouldLog) {
+        console.log(logData.message, logData.data);
+      }
 
       return c.json({
         transactionId,
@@ -201,8 +207,9 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
         };
 
         // Update member profile
-        const memberRepo = new D1MemberProfileRepository(c.env.DB, c.env.ENCRYPTION_KEY);
-        const member = await memberRepo.findById(user.memberId);
+        const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+        const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+        const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
         
         if (member) {
           member.verifyWithRankCard(mockDid, randomRank as any);
@@ -235,61 +242,118 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
     }
 
     // Production mode: Poll twdiw API
-    console.log('[VC verification] polling transaction', { transactionId, memberId: user.memberId });
+    const sanitizer = createLogSanitizer(c.env);
+
+    const pollingLogData = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] polling transaction', {
+      transactionId,
+      memberId: user.memberId
+    });
+    if (pollingLogData.shouldLog) {
+      console.log(pollingLogData.message, pollingLogData.data);
+    }
 
     const vcService = new VCVerificationService(c.env);
     const result = await vcService.checkVerificationStatus(transactionId);
 
+    const resultLogData = sanitizer.sanitize(LogLevel.INFO, '[VC verification] checkVerificationStatus result', {
+      status: result.status,
+      hasExtractedClaims: !!result.extractedClaims,
+      extractedClaims: result.extractedClaims
+    });
+    if (resultLogData.shouldLog) {
+      console.log(resultLogData.message, resultLogData.data);
+    }
+
     // Update session based on result
-    if (result.status === 'completed' && result.extractedClaims) {
+    if (result.status === 'VERIFIED' && result.extractedClaims) {
+      const updateLogData = sanitizer.sanitize(LogLevel.INFO, '[VC verification] starting member profile update', {
+        transactionId,
+        extractedClaims: result.extractedClaims,
+        userOidcSubjectId: user.oidcSubjectId
+      });
+      if (updateLogData.shouldLog) {
+        console.log(updateLogData.message, updateLogData.data);
+      }
+
       // Update member profile
-      const memberRepo = new D1MemberProfileRepository(c.env.DB, c.env.ENCRYPTION_KEY);
-      const member = await memberRepo.findById(user.memberId);
+      const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+      const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
       
+      console.log('[VC verification] repository created, finding member');
+      const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
+
+      const memberLookupLog = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] member lookup result', {
+        found: !!member,
+        memberId: member?.getId(),
+        memberStatus: member?.getStatus()
+      });
+      if (memberLookupLog.shouldLog) {
+        console.log(memberLookupLog.message, memberLookupLog.data);
+      }
+
       if (member) {
-        console.log('[VC verification] applying rank to member', {
+        const applyRankLog = sanitizer.sanitize(LogLevel.INFO, '[VC verification] applying rank to member', {
           memberId: member.getId(),
           rank: result.extractedClaims.rank,
           did: result.extractedClaims.did
         });
+        if (applyRankLog.shouldLog) {
+          console.log(applyRankLog.message, applyRankLog.data);
+        }
 
         try {
-          console.log('[VC verification] member before verification', {
+          const beforeVerifyLog = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] member before verification', {
             memberId: member.getId(),
             currentStatus: member.getStatus(),
             currentRank: member.getDerivedRank(),
             currentLinkedDid: member.getLinkedVcDid()
           });
+          if (beforeVerifyLog.shouldLog) {
+            console.log(beforeVerifyLog.message, beforeVerifyLog.data);
+          }
 
           member.verifyWithRankCard(
             result.extractedClaims.did, 
             result.extractedClaims.rank as any
           );
-          
-          console.log('[VC verification] member after verifyWithRankCard', {
+
+          const afterVerifyLog = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] member after verifyWithRankCard', {
             memberId: member.getId(),
             newStatus: member.getStatus(),
             newRank: member.getDerivedRank(),
             newLinkedDid: member.getLinkedVcDid()
           });
+          if (afterVerifyLog.shouldLog) {
+            console.log(afterVerifyLog.message, afterVerifyLog.data);
+          }
 
           await memberRepo.save(member);
-          console.log('[VC verification] member updated successfully', {
+
+          sanitizer.securityAudit('VC_VERIFICATION_SUCCESS', {
             memberId: member.getId(),
             finalStatus: member.getStatus(),
-            finalRank: member.getDerivedRank()
+            finalRank: member.getDerivedRank(),
+            transactionId
           });
         } catch (err) {
-          console.error('[VC verification] failed to update member', {
+          const errorLog = sanitizer.sanitize(LogLevel.ERROR, '[VC verification] failed to update member', {
             error: err instanceof Error ? err.message : String(err),
             memberId: member.getId(),
             currentStatus: member.getStatus(),
             extractedRank: result.extractedClaims.rank,
             extractedDid: result.extractedClaims.did
           });
+          if (errorLog.shouldLog) {
+            console.error(errorLog.message, errorLog.data);
+          }
         }
       } else {
-        console.warn('[VC verification] member not found for rank update', { memberId: user.memberId });
+        const notFoundLog = sanitizer.sanitize(LogLevel.WARN, '[VC verification] member not found for rank update', {
+          oidcSubjectId: user.oidcSubjectId
+        });
+        if (notFoundLog.shouldLog) {
+          console.warn(notFoundLog.message, notFoundLog.data);
+        }
       }
 
       // Update session
@@ -308,8 +372,9 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
         message: 'Verification completed successfully'
       });
 
-    } else if (result.status === 'completed' && !result.extractedClaims) {
-      console.error('[VC verification] completed without extracted claims', {
+    } else if (result.status === 'VERIFIED' && !result.extractedClaims) {
+      sanitizer.securityAudit('VC_VERIFICATION_ERROR', {
+        issue: 'completed without extracted claims',
         transactionId,
         memberId: user.memberId
       });

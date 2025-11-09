@@ -9,6 +9,7 @@ import { JWTService, JWTPayload } from '../infrastructure/auth/JWTService';
 import { MockAuthService } from '../infrastructure/auth/MockAuthService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
 import { EncryptionService } from '../infrastructure/security/EncryptionService';
+import { createLogSanitizer, LogLevel } from '../infrastructure/security/LogSanitizer';
 
 export interface AuthContext {
   user: {
@@ -86,17 +87,28 @@ async function handleJWTAuth(c: Context, next: Next) {
 
     // Verify token
     const payload = await jwtService.verify(token);
-    
+
     // Get member from database to ensure we have latest rank info
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
     const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
     const member = await memberRepo.findByOidcSubjectId(payload.sub);
+
+    const sanitizer = createLogSanitizer(c.env);
+    const logData = sanitizer.sanitize(LogLevel.DEBUG, '[Auth Middleware] JWT auth result', {
+      payloadSub: payload.sub,
+      memberFound: !!member,
+      memberRank: member?.getDerivedRank(),
+      memberStatus: member?.getStatus()
+    });
+    if (logData.shouldLog) {
+      console.log(logData.message, logData.data);
+    }
     
     // Add user context
     c.set('user', {
       oidcSubjectId: payload.sub,
       memberId: payload.memberId,
-      rank: member?.getDerivedRank()
+      rank: member?.getDerivedRank() || null
     });
 
     await next();
@@ -155,7 +167,7 @@ export function optionalAuthMiddleware() {
           c.set('user', {
             oidcSubjectId: payload.sub,
             memberId: payload.memberId,
-            rank: member?.getDerivedRank()
+            rank: member?.getDerivedRank() || null
           });
         }
       }

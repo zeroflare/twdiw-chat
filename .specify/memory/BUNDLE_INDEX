@@ -1,0 +1,25 @@
+# Bundle Index - Frontend Features
+
+- ✅ **Authentication Flow**:
+  - OIDC login initiation and callback handling
+  - JWT session management with automatic refresh
+  - User context with React hooks
+  - Secure logout with cookie clearing
+
+- ✅ **VC Verification UI**:
+  - QR code display from twdiw API
+  - Real-time status polling (5-second intervals)
+  - Success/failure state handling
+  - Automatic user profile refresh on completion
+
+- ✅ **Forum Access Interface**:
+  - Forum list with rank requirements display
+  - Rank-based access control (Gold > Silver > Bronze)
+  - tlk.io chat integration (opens in new window)
+  - Member count and capacity display
+
+- ✅ **User Experience**:
+  - Responsive design for mobile and desktop
+  - Loading states and error handling
+  - Clear visual feedback for all actions
+  - Intuitive navigation and information hierarchy

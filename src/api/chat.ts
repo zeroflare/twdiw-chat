@@ -50,7 +50,7 @@ app.get('/forum/:forumId', authMiddleware(), async (c) => {
     // Get member profile
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
     const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
-    const member = await memberRepo.findById(user.memberId);
+    const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
 
     if (!member) {
       return c.json({ error: 'Member not found' }, 404);
@@ -127,16 +127,7 @@ app.get('/session/:sessionId', authMiddleware(), async (c) => {
     // Get member profile
     const encryptionService2 = new EncryptionService(c.env.ENCRYPTION_KEY);
     const memberRepo2 = new D1MemberProfileRepository(c.env.DB, encryptionService2);
-    const member = await memberRepo2.findById(user.memberId);
-
-    // Debug logging for development
-    console.log('Chat API Debug:', {
-      userOidcSubjectId: user.oidcSubjectId,
-      userMemberId: user.memberId,
-      memberFound: !!member,
-      memberNickname: member?.getNickname(),
-      memberId: member?.getId()
-    });
+    const member = await memberRepo2.findByOidcSubjectId(user.oidcSubjectId);
 
     if (!member) {
       return c.json({ error: 'Member not found' }, 404);
@@ -223,7 +214,7 @@ app.post('/match', authMiddleware(), async (c) => {
     // Get member profile
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
     const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
-    const member = await memberRepo.findById(user.memberId);
+    const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
 
     if (!member) {
       return c.json({ error: 'Member not found' }, 404);

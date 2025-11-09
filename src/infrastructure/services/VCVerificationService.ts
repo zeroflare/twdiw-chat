@@ -3,13 +3,14 @@
  * Implements RankVerificationService interface for twdiw API integration
  */
 
-import { 
-  RankVerificationService, 
-  VerificationRequest, 
-  VerificationResult, 
-  VerificationStatus 
+import {
+  RankVerificationService,
+  VerificationRequest,
+  VerificationResult,
+  VerificationStatus
 } from '../../domain/services/RankVerificationService';
 import { Rank } from '../../domain/entities/MemberProfile';
+import { createLogSanitizer, LogLevel } from '../security/LogSanitizer';
 
 export interface TwdiwQRCodeResponse {
   transactionId: string;
@@ -125,7 +126,10 @@ export class VCVerificationService implements RankVerificationService {
       }
 
       const data: TwdiwStatusResponse = await response.json();
-      console.log('[VC verification] twdiw status response', {
+
+      // Log sanitized response for security audit
+      const sanitizer = createLogSanitizer();
+      const logData = sanitizer.sanitize(LogLevel.INFO, '[VC verification] twdiw status response', {
         transactionId,
         status: data.status ?? (typeof data.verifyResult === 'boolean' ? (data.verifyResult ? 'completed' : 'failed') : 'unknown'),
         verifyResult: data.verifyResult,
@@ -139,6 +143,9 @@ export class VCVerificationService implements RankVerificationService {
             }))
           : null
       });
+      if (logData.shouldLog) {
+        console.log(logData.message, logData.data);
+      }
 
       // Legacy status field support
       if (data.status) {
@@ -154,7 +161,7 @@ export class VCVerificationService implements RankVerificationService {
             const claims = this.extractRankFromResponse(data, transactionId);
             return {
               transactionId,
-              status: VerificationStatus.COMPLETED,
+              status: VerificationStatus.VERIFIED,
               verifiableCredential: data.verifiablePresentation ?? data,
               extractedClaims: claims
             };
@@ -184,7 +191,7 @@ export class VCVerificationService implements RankVerificationService {
           const claims = this.extractRankFromResponse(data, transactionId);
           return {
             transactionId: data.transactionId || transactionId,
-            status: VerificationStatus.COMPLETED,
+            status: VerificationStatus.VERIFIED,
             verifiableCredential: data.verifiablePresentation ?? data,
             extractedClaims: claims
           };
@@ -208,19 +215,27 @@ export class VCVerificationService implements RankVerificationService {
   }
 
   private extractRankFromResponse(response: TwdiwStatusResponse, fallbackTransactionId: string): { did: string; rank: string } {
+    const sanitizer = createLogSanitizer();
+
     // Prioritize data[] format (current API format)
     if (response.data) {
-      console.log('[VC verification] extracting claims from data[]', {
+      const extractLog = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] extracting claims from data[]', {
         transactionId: fallbackTransactionId,
         dataCount: Array.isArray(response.data) ? response.data.length : 1
       });
-      
+      if (extractLog.shouldLog) {
+        console.log(extractLog.message, extractLog.data);
+      }
+
       const fromData = this.extractRankFromCredentialData(response.data, fallbackTransactionId);
       if (fromData) {
-        console.log('[VC verification] extracted claims from data[]', {
+        const extractedLog = sanitizer.sanitize(LogLevel.INFO, '[VC verification] extracted claims from data[]', {
           did: fromData.did,
           rank: fromData.rank
         });
+        if (extractedLog.shouldLog) {
+          console.log(extractedLog.message, extractedLog.data);
+        }
         return fromData;
       }
     }
@@ -230,11 +245,14 @@ export class VCVerificationService implements RankVerificationService {
       return this.extractRankFromPresentation(response.verifiablePresentation);
     }
 
-    console.error('Unable to extract rank from twdiw response', {
+    const errorLog = sanitizer.sanitize(LogLevel.ERROR, 'Unable to extract rank from twdiw response', {
       hasPresentation: Boolean(response.verifiablePresentation),
       hasData: Boolean(response.data),
       credentialTypes: this.describeCredentialTypes(response.data)
     });
+    if (errorLog.shouldLog) {
+      console.error(errorLog.message, errorLog.data);
+    }
     throw new Error('Unable to extract rank from verification response');
   }
 
