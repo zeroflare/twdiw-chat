@@ -129,13 +129,12 @@ export function VCVerification() {
     };
 
   const startVerification = async () => {
-    const hadExistingSession = Boolean(verification);
     setLoading(true);
     setError(null);
     setVerification(null);
 
     try {
-      const response = await api.startVCVerification({ force: hadExistingSession });
+      const response = await api.startVCVerification({ force: true });
       if (response.error) {
         throw new Error(response.error);
       }
