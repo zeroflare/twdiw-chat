@@ -131,7 +131,13 @@ export class VCVerificationService implements RankVerificationService {
         verifyResult: data.verifyResult,
         resultDescription: data.resultDescription,
         errorCode: data.errorCode,
-        hasData: Array.isArray(data.data) && data.data.length > 0
+        hasData: Array.isArray(data.data) && data.data.length > 0,
+        claimSnapshot: Array.isArray(data.data)
+          ? data.data.map(item => ({
+              credentialType: item.credentialType,
+              claims: item.claims?.map(claim => ({ ename: claim.ename, cname: claim.cname })) || []
+            }))
+          : null
       });
 
       // Legacy status field support
