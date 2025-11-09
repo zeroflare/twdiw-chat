@@ -19,6 +19,17 @@ export function mergeVerificationState(
   };
 }
 
+const getRankDisplayName = (rank: string): string => {
+  const rankMap: Record<string, string> = {
+    'EARTH_OL_GRADUATE': '地球OL財富畢業證書持有者',
+    'LIFE_WINNER_S': '人生勝利組S級玩家',
+    'QUASI_WEALTHY_VIP': '準富豪VIP登錄證',
+    'DISTINGUISHED_PETTY': '尊爵不凡．小資族認證',
+    'NEWBIE_VILLAGE': '新手村榮譽村民證'
+  };
+  return rankMap[rank] || rank;
+};
+
 const workflowSteps = [
   {
     title: '啟動驗證',
@@ -40,9 +51,8 @@ export function VCVerification() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<'tx' | 'auth' | null>(null);
-  const [manualRefreshing, setManualRefreshing] = useState(false);
   const [pollingEnabled, setPollingEnabled] = useState(false);
-  const [pollIntervalMs, setPollIntervalMs] = useState(15000);
+  const [pollIntervalMs, setPollIntervalMs] = useState(5000);
   const [pollStartTime, setPollStartTime] = useState<number | null>(null);
   const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
 
@@ -134,7 +144,7 @@ export function VCVerification() {
           return result;
         }
 
-        setPollIntervalMs(prev => Math.min(prev + 5000, 60000));
+        setPollIntervalMs(prev => Math.min(prev + 2000, 30000)); // Slower increase, max 30s
 
         return result;
       } catch (err) {
@@ -161,7 +171,7 @@ export function VCVerification() {
     setError(null);
     setVerification(null);
     setPollingEnabled(false);
-    setPollIntervalMs(15000);
+    setPollIntervalMs(5000); // Start with shorter interval
     setPollStartTime(null);
     stopPolling();
 
@@ -171,7 +181,13 @@ export function VCVerification() {
         throw new Error(response.error);
       }
 
-      setVerification(response.data!);
+      const result = response.data!;
+      setVerification(result);
+      
+      // Auto-start polling immediately after QR code generation
+      setPollStartTime(Date.now());
+      setPollingEnabled(true);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : '啟動驗證失敗');
     } finally {
@@ -187,32 +203,13 @@ export function VCVerification() {
     stopPolling();
   };
 
-  const handleManualRefresh = async () => {
-    if (!verification?.transactionId) return;
-    setManualRefreshing(true);
-    try {
-      await executePoll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '查詢失敗');
-    } finally {
-      setManualRefreshing(false);
-    }
-  };
-
-  const handleEnablePolling = () => {
-    if (!verification?.transactionId) return;
-    setError(null);
-    setPollIntervalMs(15000);
-    setPollStartTime(Date.now());
-    setPollingEnabled(true);
-    executePoll();
-  };
-
   if (!user) {
     return null;
   }
 
   if (user.status === 'VERIFIED') {
+    const rankDisplayName = user.rank ? getRankDisplayName(user.rank) : '已驗證';
+    
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <div className="flex items-center">
@@ -227,7 +224,9 @@ export function VCVerification() {
           </div>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-green-800">階級卡已驗證</h3>
-            <p className="mt-1 text-sm text-green-700">您的 {user.rank} 等級已確認，可以存取專屬論壇！</p>
+            <p className="mt-1 text-sm text-green-700">
+              您的「{rankDisplayName}」等級已確認，可以存取專屬論壇！
+            </p>
           </div>
         </div>
       </div>
@@ -369,36 +368,9 @@ export function VCVerification() {
                   </p>
                 )}
                 <p className="mt-3 text-xs text-blue-900">
-                  皮夾送出後保持本頁開啟，系統會依 workflow 自動更新。
+                  完成皮夾驗證後，系統會自動檢測並更新狀態。
                 </p>
               </div>
-            </div>
-
-            <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-800 space-y-2">
-              <p className="font-medium text-gray-900">掃描完成後的查詢方式</p>
-              <p className="text-xs text-gray-500">
-                可啟動自動查詢（最多 5 分鐘，間隔逐步拉長），也可以隨時手動查詢一次。
-              </p>
-              {!pollingEnabled ? (
-                <button
-                  onClick={handleEnablePolling}
-                  disabled={!verification?.transactionId}
-                  className="w-full rounded bg-primary-500 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-600 disabled:opacity-50"
-                >
-                  我已在錢包送出，開始自動查詢
-                </button>
-              ) : (
-                <div className="rounded bg-primary-50 px-3 py-2 text-xs text-primary-700">
-                  自動查詢中，間隔 {Math.round(pollIntervalMs / 1000)} 秒，最多 5 分鐘後自動停止。
-                </div>
-              )}
-              <button
-                onClick={handleManualRefresh}
-                disabled={manualRefreshing}
-                className="w-full rounded border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {manualRefreshing ? '查詢中...' : '立刻手動查詢一次'}
-              </button>
             </div>
 
             {verification.status === 'pending' && (
@@ -408,24 +380,17 @@ export function VCVerification() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>等待皮夾回傳驗證結果中...</span>
+                  <span>系統自動檢測驗證結果中...</span>
                 </div>
                 <p className="mt-2 text-xs">
-                  如果需要，可手動查詢或重新產生 QR；自動查詢最多持續 5 分鐘。
+                  請完成皮夾驗證流程，系統會自動更新狀態。如果超過 5 分鐘未完成，可重新產生 QR Code。
                 </p>
-                <div className="mt-3 flex flex-col gap-2">
-                  <button
-                    onClick={handleManualRefresh}
-                    disabled={manualRefreshing}
-                    className="rounded bg-white px-3 py-1.5 text-sm text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    {manualRefreshing ? '查詢中...' : '手動再查一次'}
-                  </button>
+                <div className="mt-3">
                   <button
                     onClick={resetVerification}
                     className="rounded bg-white px-3 py-1.5 text-sm text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
                   >
-                    取消 / 重新產生
+                    重新產生 QR Code
                   </button>
                 </div>
               </div>
@@ -440,6 +405,25 @@ export function VCVerification() {
                 <p className="text-sm">
                   我們已收到 moda workflow 的結果。若介面尚未自動更新，請點擊下方按鈕重新載入會員資料。
                 </p>
+                
+                {verification.extractedClaims && (
+                  <div className="mt-4 rounded-lg border border-green-300 bg-green-100 p-3">
+                    <h4 className="text-sm font-semibold text-green-900 mb-2">驗證結果</h4>
+                    <div className="space-y-1 text-xs text-green-800">
+                      <div className="flex justify-between">
+                        <span>階級:</span>
+                        <span className="font-medium">{getRankDisplayName(verification.extractedClaims.rank)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>DID:</span>
+                        <span className="font-mono text-[10px] break-all">
+                          {verification.extractedClaims.did}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="mt-4 flex flex-wrap justify-center gap-3">
                   <button
                     onClick={async () => {
@@ -458,16 +442,28 @@ export function VCVerification() {
 
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3">
-            <p className="text-sm text-red-700">{error}</p>
-            <p className="mt-1 text-xs text-red-600">
-              若持續失敗，請確認 moda 驗證端 workflow 是否完成，或重新啟動流程取得新的 transactionId。
-            </p>
-            <button
-              onClick={resetVerification}
-              className="mt-2 rounded bg-red-100 px-3 py-1 text-xs text-red-800 hover:bg-red-200"
-            >
-              重新開始
-            </button>
+            <div className="flex items-start gap-2">
+              <svg className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-800">驗證過程發生錯誤</p>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <div className="mt-2 text-xs text-red-600 space-y-1">
+                  <p>• 若顯示「查詢逾時」，請確認已在皮夾中完成驗證流程</p>
+                  <p>• 若顯示「QR 已過期」，請重新啟動驗證取得新的 QR Code</p>
+                  <p>• 若持續失敗，請檢查網路連線或稍後再試</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={resetVerification}
+                className="rounded bg-red-100 px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-200"
+              >
+                重新開始
+              </button>
+            </div>
           </div>
         )}
       </div>

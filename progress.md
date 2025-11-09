@@ -2023,3 +2023,47 @@
 - **ChangedPaths**: src/middleware/auth.ts
 - **AcceptanceCheck**: yes - optional auth middleware now uses actual database member IDs consistently
 - **RollbackPlan**: Revert optionalAuthMiddleware to use mockUser.id instead of member.getId()
+## Current Session - COMPLETED (2025-11-09 - VC Verification UI Simplification)
+- **Start Time**: 2025-11-09T12:09:09+08:00
+- **Target**: Simplify VC verification UI by removing manual polling controls
+- **Phase**: Manual Fix - COMPLETED
+- **Gate**: Low
+- **Method**: Remove manual controls and make verification fully automatic
+
+## Phase Results - Current Session (2025-11-09 - VC Verification UI Simplification)
+- **Summary**: Simplified VC verification interface by removing manual polling controls and making the process fully automatic
+- **Root Cause**: Manual polling controls added unnecessary complexity when automatic polling works reliably
+- **Method**: Removed manual refresh buttons and simplified user flow
+- **ChangedPaths**:
+  - frontend/src/components/vc/VCVerification.tsx (modified):
+    * Removed manualRefreshing state variable
+    * Auto-start polling immediately after QR code generation (no manual trigger needed)
+    * Reduced initial poll interval from 15s to 5s for faster response
+    * Removed manual refresh section and buttons
+    * Removed handleManualRefresh() and handleEnablePolling() functions
+    * Simplified pending status display with only "重新產生 QR Code" option
+    * Updated messaging to emphasize automatic detection
+    * Removed "再試一次" button from error handling
+- **Key Improvements**:
+  1. **Automatic Flow**: Polling starts immediately after QR generation
+  2. **Faster Response**: Initial 5s interval instead of 15s
+  3. **Simpler UI**: No manual polling controls or confusing buttons
+  4. **Better UX**: Clear messaging about automatic detection
+  5. **Reduced Complexity**: Fewer state variables and functions
+- **User Flow Now**:
+  1. Click "開始驗證" → QR code appears + auto-polling starts
+  2. Scan QR or use Deep Link
+  3. System automatically detects completion
+  4. Shows verification results with extracted claims
+- **AcceptanceCheck**: yes - VC verification interface now:
+  - Starts polling automatically after QR generation
+  - Provides faster initial response (5s intervals)
+  - Eliminates confusing manual controls
+  - Maintains all core functionality while being simpler
+  - Clear messaging about automatic detection process
+- **RollbackPlan**:
+  1. Restore manualRefreshing state variable
+  2. Add back handleManualRefresh() and handleEnablePolling() functions
+  3. Restore manual polling control section
+  4. Add back manual refresh buttons in pending and error states
+  5. Restore 15s initial polling interval

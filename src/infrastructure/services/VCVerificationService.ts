@@ -208,17 +208,31 @@ export class VCVerificationService implements RankVerificationService {
   }
 
   private extractRankFromResponse(response: TwdiwStatusResponse, fallbackTransactionId: string): { did: string; rank: string } {
+    // Prioritize data[] format (current API format)
+    if (response.data) {
+      console.log('[VC verification] extracting claims from data[]', {
+        transactionId: fallbackTransactionId,
+        dataCount: Array.isArray(response.data) ? response.data.length : 1
+      });
+      
+      const fromData = this.extractRankFromCredentialData(response.data, fallbackTransactionId);
+      if (fromData) {
+        console.log('[VC verification] extracted claims from data[]', {
+          did: fromData.did,
+          rank: fromData.rank
+        });
+        return fromData;
+      }
+    }
+
+    // Fallback to legacy verifiablePresentation format
     if (response.verifiablePresentation) {
       return this.extractRankFromPresentation(response.verifiablePresentation);
     }
 
-    const fromData = this.extractRankFromCredentialData(response.data, fallbackTransactionId);
-    if (fromData) {
-      return fromData;
-    }
-
     console.error('Unable to extract rank from twdiw response', {
       hasPresentation: Boolean(response.verifiablePresentation),
+      hasData: Boolean(response.data),
       credentialTypes: this.describeCredentialTypes(response.data)
     });
     throw new Error('Unable to extract rank from verification response');

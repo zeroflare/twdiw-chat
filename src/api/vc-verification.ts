@@ -254,18 +254,39 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
         });
 
         try {
+          console.log('[VC verification] member before verification', {
+            memberId: member.getId(),
+            currentStatus: member.getStatus(),
+            currentRank: member.getDerivedRank(),
+            currentLinkedDid: member.getLinkedVcDid()
+          });
+
           member.verifyWithRankCard(
             result.extractedClaims.did, 
             result.extractedClaims.rank as any
           );
+          
+          console.log('[VC verification] member after verifyWithRankCard', {
+            memberId: member.getId(),
+            newStatus: member.getStatus(),
+            newRank: member.getDerivedRank(),
+            newLinkedDid: member.getLinkedVcDid()
+          });
+
           await memberRepo.save(member);
           console.log('[VC verification] member updated successfully', {
             memberId: member.getId(),
-            newStatus: member.getStatus(),
-            newRank: member.getDerivedRank()
+            finalStatus: member.getStatus(),
+            finalRank: member.getDerivedRank()
           });
         } catch (err) {
-          console.error('[VC verification] failed to update member', err);
+          console.error('[VC verification] failed to update member', {
+            error: err instanceof Error ? err.message : String(err),
+            memberId: member.getId(),
+            currentStatus: member.getStatus(),
+            extractedRank: result.extractedClaims.rank,
+            extractedDid: result.extractedClaims.did
+          });
         }
       } else {
         console.warn('[VC verification] member not found for rank update', { memberId: user.memberId });
