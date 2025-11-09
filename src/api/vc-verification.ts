@@ -147,6 +147,24 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
       return c.json({ error: 'Unauthorized access to verification session' }, 403);
     }
 
+    if (session.status !== 'pending') {
+      console.log('[VC verification] returning cached session result', {
+        transactionId,
+        status: session.status,
+        hasExtractedClaims: Boolean(session.extractedDid && session.extractedRank)
+      });
+
+      return c.json({
+        transactionId,
+        status: session.status,
+        error: session.error,
+        extractedClaims: session.extractedDid && session.extractedRank ? {
+          did: session.extractedDid,
+          rank: session.extractedRank
+        } : undefined
+      });
+    }
+
     // Check if already completed
     if (session.status !== 'pending') {
       return c.json({
@@ -270,7 +288,10 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
       });
 
     } else if (result.status === 'completed' && !result.extractedClaims) {
-      console.error('[VC verification] completed without extracted claims', { transactionId });
+      console.error('[VC verification] completed without extracted claims', {
+        transactionId,
+        memberId: user.memberId
+      });
     } else if (result.status === 'failed' || result.status === 'expired') {
       await sessionStore.updateSession(transactionId, {
         status: result.status,
