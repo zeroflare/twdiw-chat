@@ -7,5 +7,3 @@
 - **Gate**: 
 
 ## Summary of Recent Changes
-
-### Uncommitted Changes

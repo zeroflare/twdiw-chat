@@ -35,7 +35,7 @@
 		"TWDIW_API_URL": "https://verifier-sandbox.wallet.gov.tw",
 		"OIDC_ISSUER_URL": "https://twdiw-sso.zeroflare.tw",
 		"OIDC_REDIRECT_URI": "https://twdiw-chat.twdiw-chat-api.workers.dev/api/auth/callback",
-		"FRONTEND_URL": "https://twdiw-chat-app.pages.dev",
+		"FRONTEND_URL": "https://twdiw-chat.pages.dev",
 		"TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw",
 		"TWDIW_REF": "0052696330_vc_asset_player_rank_certificate",
 		"TLKIO_BASE_URL": "https://tlk.io",

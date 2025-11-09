@@ -1,31 +1,18 @@
 # Progress Log - twdiw-chat
 
 ## Current Session
-- **Start Time**: 2025-11-09T08:00:00+08:00
-- **Target**: SSCI-Lite closing steps
-- **Phase**: Maintenance
-- **Gate**: Low
+- **Start Time**: 2025-11-09
+- **Target**: Fix FRONTEND_URL environment variable configuration
+- **Phase**: Configuration Fix
+- **Gate**: Backend Authentication Flow
 
 ## Summary of Recent Changes
 
-### Task Completed: Fix CORS Domain Configuration
-- **Completed**: 2025-11-09T23:45:00+08:00
-- **Impact**: Corrected CORS configuration from incorrect domain `twdiw-chat-app.pages.dev` to actual frontend domain `twdiw-chat.pages.dev`, resolving cross-origin request blocking issues.
-- **File Modified**: `src/index.ts`
-- **Changes**:
-  - Updated static domain: `twdiw-chat-app.pages.dev` → `twdiw-chat.pages.dev`
-  - Updated regex pattern: `/^https:\/\/.*\.twdiw-chat-app\.pages\.dev$/` → `/^https:\/\/.*\.twdiw-chat\.pages\.dev$/`
-
-### Task Completed: Fix Cloudflare Pages JavaScript MIME Type Issue
-- **Completed**: 2025-11-09T23:30:00+08:00
-- **Impact**: Resolved ES modules loading issue on Cloudflare Pages by correctly setting the JavaScript MIME type to `application/javascript` and enhancing security headers.
-- **File Modified**: `frontend/dist/_headers`
-
 ### Uncommitted Changes
-The following files have been modified but not yet committed:
-- `src/index.ts`
-- `src/api/auth.ts`
-- `src/api/chat.ts`
-- `src/api/vc-verification.ts`
-- `src/infrastructure/services/VCVerificationService.ts`
-- `src/middleware/auth.ts`
+
+#### 2025-11-09: Fixed FRONTEND_URL Environment Variable
+- **File Modified**: `wrangler.jsonc:38`
+- **Issue**: FRONTEND_URL was incorrectly set to `https://twdiw-chat-app.pages.dev`
+- **Fix**: Updated FRONTEND_URL to correct domain `https://twdiw-chat.pages.dev`
+- **Impact**: This fixes backend authentication flow that was returning 500 errors due to domain mismatch
+- **Status**: Completed
