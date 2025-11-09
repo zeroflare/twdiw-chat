@@ -227,11 +227,28 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
       const member = await memberRepo.findById(user.memberId);
       
       if (member) {
-        member.verifyWithRankCard(
-          result.extractedClaims.did, 
-          result.extractedClaims.rank as any
-        );
-        await memberRepo.save(member);
+        console.log('[VC verification] applying rank to member', {
+          memberId: member.getId(),
+          rank: result.extractedClaims.rank,
+          did: result.extractedClaims.did
+        });
+
+        try {
+          member.verifyWithRankCard(
+            result.extractedClaims.did, 
+            result.extractedClaims.rank as any
+          );
+          await memberRepo.save(member);
+          console.log('[VC verification] member updated successfully', {
+            memberId: member.getId(),
+            newStatus: member.getStatus(),
+            newRank: member.getDerivedRank()
+          });
+        } catch (err) {
+          console.error('[VC verification] failed to update member', err);
+        }
+      } else {
+        console.warn('[VC verification] member not found for rank update', { memberId: user.memberId });
       }
 
       // Update session
