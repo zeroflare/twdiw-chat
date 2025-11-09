@@ -107,7 +107,7 @@ Queries verification result.
 1. Open the deployed URL in a browser
 2. Select a disclosure level (Basic or higher)
 3. QR code should appear
-4. Scan with MODA digital wallet
+4. Scan with moda digital wallet
 5. Verify credential in wallet
 6. Status should change to "✅ 驗證成功！"
 7. "下一步" button should be enabled

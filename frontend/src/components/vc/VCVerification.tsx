@@ -25,8 +25,8 @@ const workflowSteps = [
     description: '建立交易並自 twdiw 驗證端取得 QR Code / Deep Link',
   },
   {
-    title: '掃描或開啟錢包',
-    description: '使用 MODA 數位憑證皮夾掃描 QR 或點擊 Deep Link',
+    title: '掃描或開啟皮夾',
+    description: '使用 moda 數位憑證皮夾掃描 QR 或點擊 Deep Link',
   },
   {
     title: '等待驗證回覆',
@@ -68,9 +68,9 @@ export function VCVerification() {
 
     switch (verification.status) {
       case 'pending':
-        return { label: '等待錢包回覆', color: 'bg-blue-100 text-blue-700' };
+        return { label: '等待皮夾回覆', color: 'bg-blue-100 text-blue-700' };
       case 'completed':
-        return { label: '錢包已回傳', color: 'bg-green-100 text-green-700' };
+        return { label: '皮夾已回傳', color: 'bg-green-100 text-green-700' };
       case 'failed':
         return { label: '驗證失敗', color: 'bg-red-100 text-red-700' };
       case 'expired':
@@ -254,7 +254,7 @@ export function VCVerification() {
         {!verification ? (
           <>
             <p className="text-gray-600">
-              twdiw QR Code 有效 5 分鐘，請先開啟 MODA 數位憑證皮夾或相容錢包，掃描後回到本頁等待 30-60 秒即可同步狀態。
+              twdiw QR Code 有效 5 分鐘，請先開啟 moda 數位憑證皮夾或相容皮夾，掃描後回到本頁等待 30-60 秒即可同步狀態。
             </p>
             <ul className="list-disc space-y-1 pl-5 text-xs text-gray-500">
               <li>如在手機使用本頁，可直接使用 Deep Link 無須掃描</li>
@@ -288,7 +288,7 @@ export function VCVerification() {
             <div className="space-y-4">
               {verification.qrCodeUrl && (
                 <div className="rounded-lg border border-gray-200 p-4 text-center">
-                  <p className="text-sm text-gray-600 mb-3">請使用錢包 APP 掃描 QR Code</p>
+                  <p className="text-sm text-gray-600 mb-3">請使用皮夾 APP 掃描 QR Code</p>
                   <img
                     src={verification.qrCodeUrl}
                     alt="VC Verification QR Code"
@@ -308,7 +308,7 @@ export function VCVerification() {
                       rel="noreferrer"
                       className="inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                     >
-                      在錢包中開啟驗證
+                      在皮夾中開啟驗證
                     </a>
                     <button
                       onClick={() => handleCopy(verification.authUri!, 'auth')}
@@ -323,7 +323,7 @@ export function VCVerification() {
                   </p>
                 )}
                 <p className="mt-3 text-xs text-blue-900">
-                  錢包送出後保持本頁開啟，系統會依 workflow 自動更新。
+                  皮夾送出後保持本頁開啟，系統會依 workflow 自動更新。
                 </p>
               </div>
             </div>
@@ -335,7 +335,7 @@ export function VCVerification() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>等待錢包回傳驗證結果中...</span>
+                  <span>等待皮夾回傳驗證結果中...</span>
                 </div>
                 <p className="mt-2 text-xs">系統每 {verification.pollInterval || 5000} ms 輪詢一次 twdiw API。</p>
                 <button
@@ -352,9 +352,9 @@ export function VCVerification() {
                 <svg className="mx-auto h-10 w-10 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h3 className="mt-3 text-lg font-semibold text-green-900">錢包驗證完成</h3>
+                <h3 className="mt-3 text-lg font-semibold text-green-900">皮夾驗證完成</h3>
                 <p className="text-sm">
-                  我們已收到 MODA workflow 的結果。若介面尚未自動更新，請點擊下方按鈕重新載入會員資料。
+                  我們已收到 moda workflow 的結果。若介面尚未自動更新，請點擊下方按鈕重新載入會員資料。
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-3">
                   <button
@@ -376,7 +376,7 @@ export function VCVerification() {
           <div className="rounded-md border border-red-200 bg-red-50 p-3">
             <p className="text-sm text-red-700">{error}</p>
             <p className="mt-1 text-xs text-red-600">
-              若持續失敗，請確認 MODA 驗證端 workflow 是否完成，或重新啟動流程取得新的 transactionId。
+              若持續失敗，請確認 moda 驗證端 workflow 是否完成，或重新啟動流程取得新的 transactionId。
             </p>
             <button
               onClick={resetVerification}
