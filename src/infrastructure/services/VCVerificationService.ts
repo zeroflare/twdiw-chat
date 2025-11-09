@@ -137,7 +137,7 @@ export class VCVerificationService implements RankVerificationService {
             };
 
           case 'completed': {
-            const claims = this.extractRankFromResponse(data);
+            const claims = this.extractRankFromResponse(data, transactionId);
             return {
               transactionId,
               status: VerificationStatus.COMPLETED,
@@ -167,7 +167,7 @@ export class VCVerificationService implements RankVerificationService {
 
       if (typeof data.verifyResult === 'boolean') {
         if (data.verifyResult) {
-          const claims = this.extractRankFromResponse(data);
+          const claims = this.extractRankFromResponse(data, transactionId);
           return {
             transactionId: data.transactionId || transactionId,
             status: VerificationStatus.COMPLETED,
@@ -193,42 +193,75 @@ export class VCVerificationService implements RankVerificationService {
     }
   }
 
-  private extractRankFromResponse(response: TwdiwStatusResponse): { did: string; rank: string } {
+  private extractRankFromResponse(response: TwdiwStatusResponse, fallbackTransactionId: string): { did: string; rank: string } {
     if (response.verifiablePresentation) {
       return this.extractRankFromPresentation(response.verifiablePresentation);
     }
 
-    const fromData = this.extractRankFromCredentialData(response.data);
+    const fromData = this.extractRankFromCredentialData(response.data, fallbackTransactionId);
     if (fromData) {
       return fromData;
     }
 
+    console.error('Unable to extract rank from twdiw response', {
+      hasPresentation: Boolean(response.verifiablePresentation),
+      credentialTypes: this.describeCredentialTypes(response.data)
+    });
     throw new Error('Unable to extract rank from verification response');
   }
 
-  private extractRankFromCredentialData(data?: TwdiwCredentialData[]): { did: string; rank: string } | null {
-    if (!data?.length) {
+  private describeCredentialTypes(data?: TwdiwCredentialData[] | TwdiwCredentialData | null) {
+    const list = this.normalizeCredentialData(data);
+    return list.map(item => ({
+      credentialType: item.credentialType,
+      claimNames: item.claims?.map(claim => claim.ename || claim.cname) || []
+    }));
+  }
+
+  private normalizeCredentialData(data?: TwdiwCredentialData[] | TwdiwCredentialData | null): TwdiwCredentialData[] {
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && typeof data === 'object') {
+      return [data];
+    }
+    return [];
+  }
+
+  private extractRankFromCredentialData(data?: TwdiwCredentialData[] | TwdiwCredentialData | null, fallbackTransactionId?: string): { did: string; rank: string } | null {
+    const credentials = this.normalizeCredentialData(data);
+    if (!credentials.length) {
       return null;
     }
 
-    for (const credential of data) {
+    for (const credential of credentials) {
       if (!credential.claims?.length) continue;
 
       const claims = credential.claims;
 
       const didClaim = claims.find((claim) => (claim.value?.startsWith('did:')) ||
         claim.ename?.toLowerCase() === 'did' ||
-        claim.ename?.toLowerCase() === 'holderdid');
+        claim.ename?.toLowerCase() === 'holderdid' ||
+        claim.cname?.includes('DID'));
 
       const rankClaim = claims.find((claim) => {
         const name = claim.ename?.toLowerCase() || '';
         const cname = claim.cname || '';
-        return name.includes('rank') || name.includes('level') || cname.includes('等級');
+        return name.includes('rank') ||
+          name.includes('level') ||
+          name.includes('class') ||
+          cname.includes('等級') ||
+          cname.includes('階級') ||
+          cname.includes('卡別');
       });
 
-      if (didClaim?.value && rankClaim?.value) {
+      if (rankClaim?.value) {
+        const didValue = didClaim?.value || (fallbackTransactionId ? `did:twdiw:${fallbackTransactionId}` : undefined);
+        if (!didValue) {
+          continue;
+        }
         return {
-          did: didClaim.value,
+          did: didValue,
           rank: this.normalizeRank(rankClaim.value)
         };
       }
