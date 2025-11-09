@@ -112,6 +112,8 @@ export function VCVerification() {
   const executePoll = async () => {
       if (!verification?.transactionId) return null;
 
+      console.log('[VCVerification] Executing poll for transactionId:', verification.transactionId);
+
       if (pollStartTime && Date.now() - pollStartTime > MAX_POLL_DURATION_MS) {
         setPollingEnabled(false);
         setError('查詢逾時，請重新產生 QR Code');
@@ -119,19 +121,25 @@ export function VCVerification() {
       }
 
       try {
+        console.log('[VCVerification] Calling API pollVCVerification...');
         const response = await api.pollVCVerification(verification.transactionId);
+        console.log('[VCVerification] Poll response received:', response);
+        
         if (response.error) {
           throw new Error(response.error);
         }
 
         const result = response.data!;
+        console.log('[VCVerification] Poll result:', { status: result.status, extractedClaims: result.extractedClaims });
         setVerification(prev => mergeVerificationState(prev, result));
 
         if (result.status === 'completed') {
+          console.log('[VCVerification] Verification completed, stopping polling and refreshing user');
           setPollingEnabled(false);
           setError(null);
           try {
             await refreshUser();
+            console.log('[VCVerification] User refreshed successfully');
           } catch (err) {
             console.error('Failed to refresh user after VC verification:', err);
           }
@@ -183,6 +191,11 @@ export function VCVerification() {
 
       const result = response.data!;
       setVerification(result);
+      
+      console.log('[VCVerification] QR code generated, starting polling:', { 
+        transactionId: result.transactionId, 
+        status: result.status 
+      });
       
       // Auto-start polling immediately after QR code generation
       setPollStartTime(Date.now());

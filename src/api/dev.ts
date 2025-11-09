@@ -55,7 +55,7 @@ app.post('/login/:userId', async (c) => {
 
     // Create or update member profile in database
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     let member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
     
     if (!member) {
@@ -151,7 +151,7 @@ app.post('/seed-data', async (c) => {
   try {
     const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     
     const users = mockAuthService.getMockUsers();
     const results = [];
@@ -200,7 +200,7 @@ app.post('/vc/complete/:transactionId', async (c) => {
     const { rank = Rank.EARTH_OL_GRADUATE } = await c.req.json();
     
     // Update verification session to completed
-    const sessionStore = new (await import('../infrastructure/services/VCVerificationSessionStore')).VCVerificationSessionStore(c.env.DB);
+    const sessionStore = new (await import('../infrastructure/services/VCVerificationSessionStore')).VCVerificationSessionStore(c.env.twdiw_chat_db);
     
     await sessionStore.updateSession(transactionId, {
       status: 'completed',

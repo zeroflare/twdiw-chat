@@ -6,7 +6,7 @@
 import { SessionExpiryService } from '../infrastructure/services/SessionExpiryService';
 
 export interface Env {
-  DB: D1Database;
+  twdiw_chat_db: D1Database;
   ENCRYPTION_KEY: string;
 }
 
@@ -19,7 +19,7 @@ export default {
     console.log('Starting scheduled session cleanup...');
     
     try {
-      const sessionExpiryService = new SessionExpiryService(env.DB, env.ENCRYPTION_KEY);
+      const sessionExpiryService = new SessionExpiryService(env.twdiw_chat_db, env.ENCRYPTION_KEY);
       
       // Perform cleanup
       const result = await sessionExpiryService.cleanupExpiredSessions();

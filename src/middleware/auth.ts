@@ -47,7 +47,7 @@ async function handleMockAuth(c: Context, next: Next) {
 
     // Find actual member in database by OIDC subject ID
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     const member = await memberRepo.findByOidcSubjectId(mockUser.oidcSubjectId);
     
     if (!member) {
@@ -90,7 +90,7 @@ async function handleJWTAuth(c: Context, next: Next) {
 
     // Get member from database to ensure we have latest rank info
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     const member = await memberRepo.findByOidcSubjectId(payload.sub);
 
     const sanitizer = createLogSanitizer(c.env);
@@ -133,7 +133,7 @@ export function optionalAuthMiddleware() {
           if (mockUser) {
             // Find actual member in database by OIDC subject ID (consistent with handleMockAuth)
             const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-            const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+            const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
             const member = await memberRepo.findByOidcSubjectId(mockUser.oidcSubjectId);
             
             if (member) {
@@ -161,7 +161,7 @@ export function optionalAuthMiddleware() {
           
           // Get member from database to ensure we have latest rank info
           const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-          const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+          const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
           const member = await memberRepo.findByOidcSubjectId(payload.sub);
           
           c.set('user', {

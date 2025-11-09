@@ -49,7 +49,7 @@ app.post('/start', authMiddleware(), async (c) => {
     }
 
     // Check if member already has pending verification
-    const sessionStore = new VCVerificationSessionStore(c.env.DB);
+    const sessionStore = new VCVerificationSessionStore(c.env.twdiw_chat_db);
     const existingSession = await sessionStore.getSessionByMember(memberId);
     const now = Date.now();
 
@@ -100,8 +100,11 @@ app.post('/start', authMiddleware(), async (c) => {
     }
 
     // Production mode: use real VC verification service
+    console.log('[VC verification] Creating VCVerificationService...');
     const vcService = new VCVerificationService(c.env);
+    console.log('[VC verification] VCVerificationService created, calling initiateVerification...');
     const result = await vcService.initiateVerification({ memberId });
+    console.log('[VC verification] initiateVerification completed, storing session...');
 
     // Store session
     await sessionStore.createSession({
@@ -113,12 +116,22 @@ app.post('/start', authMiddleware(), async (c) => {
       expiresAt: now + SESSION_TTL_MS
     });
 
-    return c.json({
+    console.log('[VC verification] Session stored, preparing response...');
+    const response = {
       transactionId: result.transactionId,
       qrCodeUrl: result.qrCodeUrl, // Now contains the base64 image
       authUri: result.authUri,
       status: result.status
+    };
+    
+    console.log('[VC verification] Sending response to frontend:', { 
+      transactionId: response.transactionId, 
+      status: response.status, 
+      hasQrCodeUrl: !!response.qrCodeUrl, 
+      hasAuthUri: !!response.authUri 
     });
+
+    return c.json(response);
 
   } catch (error) {
     console.error('VC verification start failed:', error);
@@ -133,7 +146,7 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
     const transactionId = c.req.param('transactionId');
 
     // Get session from store
-    const sessionStore = new VCVerificationSessionStore(c.env.DB);
+    const sessionStore = new VCVerificationSessionStore(c.env.twdiw_chat_db);
     const session = await sessionStore.getSession(transactionId);
 
     if (!session) {
@@ -208,7 +221,7 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
 
         // Update member profile
         const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-        const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+        const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
         const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
         
         if (member) {
@@ -277,7 +290,7 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
 
       // Update member profile
       const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-      const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+      const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
       
       console.log('[VC verification] repository created, finding member');
       const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
@@ -402,6 +415,81 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
   } catch (error) {
     console.error('VC verification poll failed:', error);
     return c.json({ error: 'Failed to check verification status' }, 500);
+  }
+});
+
+// GET /api/vc/verify/test-poll/:transactionId - Test polling without auth (temporary)
+app.get('/test-poll/:transactionId', async (c) => {
+  try {
+    const transactionId = c.req.param('transactionId');
+    console.log('[VC verification] Manual test polling for transactionId:', transactionId);
+
+    const vcService = new VCVerificationService(c.env);
+    const result = await vcService.checkVerificationStatus(transactionId);
+
+    console.log('[VC verification] Test polling result:', {
+      status: result.status,
+      hasExtractedClaims: !!result.extractedClaims,
+      extractedClaims: result.extractedClaims
+    });
+
+    return c.json({
+      transactionId,
+      status: result.status,
+      extractedClaims: result.extractedClaims,
+      message: 'Test polling completed'
+    });
+
+  } catch (error) {
+    console.error('Test polling failed:', error);
+    return c.json({ error: 'Test polling failed' }, 500);
+  }
+});
+
+// POST /api/vc/verify/manual-update - Manual update user rank (temporary)
+app.post('/manual-update', authMiddleware(), async (c) => {
+  try {
+    const user = c.get('user');
+    const { did, rank } = await c.req.json();
+
+    console.log('[VC verification] Manual rank update requested:', { did, rank, oidcSubjectId: user.oidcSubjectId });
+
+    const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
+    
+    const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
+    
+    if (!member) {
+      return c.json({ error: 'Member not found' }, 404);
+    }
+
+    console.log('[VC verification] Member found, applying rank:', { 
+      memberId: member.getId(), 
+      currentRank: member.getDerivedRank(),
+      newRank: rank 
+    });
+
+    member.verifyWithRankCard(did, rank as any);
+    await memberRepo.save(member);
+
+    console.log('[VC verification] Manual rank update completed:', {
+      memberId: member.getId(),
+      finalRank: member.getDerivedRank(),
+      finalStatus: member.getStatus()
+    });
+
+    return c.json({
+      message: 'Rank updated successfully',
+      member: {
+        id: member.getId(),
+        status: member.getStatus(),
+        rank: member.getDerivedRank()
+      }
+    });
+
+  } catch (error) {
+    console.error('Manual rank update failed:', error);
+    return c.json({ error: 'Manual rank update failed' }, 500);
   }
 });
 

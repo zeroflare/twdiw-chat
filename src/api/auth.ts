@@ -186,7 +186,7 @@ app.get('/callback', async (c) => {
     // Find or create member profile
     console.log('Setting up database...');
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     
     console.log('Looking for existing member...');
     let member = await memberRepo.findByOidcSubjectId(subjectId);
@@ -257,7 +257,7 @@ app.put('/profile', authMiddleware(), async (c) => {
 
     // Update member profile
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     
     const member = await memberRepo.findById(user.memberId);
     if (!member) {
@@ -296,7 +296,7 @@ app.post('/refresh', authMiddleware(), async (c) => {
     }
 
     // Verify member still exists
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, c.env.ENCRYPTION_KEY);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, c.env.ENCRYPTION_KEY);
     const member = await memberRepo.findById(user.memberId);
 
     if (!member) {
@@ -353,7 +353,7 @@ app.get('/me', authMiddleware(), async (c) => {
 
     // Get fresh member data
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
 
     if (!member) {

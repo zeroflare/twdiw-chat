@@ -25,15 +25,15 @@ app.get('/', optionalAuthMiddleware(), async (c) => {
 
     // Query member counts for all ranks (we'll calculate accessible members per forum)
     const allRankCounts = await Promise.all([
-      c.env.DB.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
+      c.env.twdiw_chat_db.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
         .bind(Rank.EARTH_OL_GRADUATE).first(),
-      c.env.DB.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
+      c.env.twdiw_chat_db.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
         .bind(Rank.LIFE_WINNER_S).first(),
-      c.env.DB.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
+      c.env.twdiw_chat_db.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
         .bind(Rank.QUASI_WEALTHY_VIP).first(),
-      c.env.DB.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
+      c.env.twdiw_chat_db.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
         .bind(Rank.DISTINGUISHED_PETTY).first(),
-      c.env.DB.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
+      c.env.twdiw_chat_db.prepare('SELECT COUNT(*) as count FROM member_profiles WHERE derived_rank = ?')
         .bind(Rank.NEWBIE_VILLAGE).first()
     ]);
 

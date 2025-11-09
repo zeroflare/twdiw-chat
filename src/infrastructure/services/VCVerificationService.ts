@@ -71,36 +71,68 @@ export class VCVerificationService implements RankVerificationService {
   }
 
   async initiateVerification(request: VerificationRequest): Promise<VerificationResult> {
+    console.log("[VCVerificationService] Starting verification initiation", { apiEndpoint: this.apiEndpoint, ref: this.ref, hasToken: !!this.apiToken });
     try {
       const transactionId = this.generateTransactionId();
-      const response = await fetch(`${this.apiEndpoint}/api/oidvp/qrcode?ref=${encodeURIComponent(this.ref)}&transactionId=${encodeURIComponent(transactionId)}`, {
+      console.log("[VCVerificationService] Generated transactionId:", transactionId);
+      
+      const url = `${this.apiEndpoint}/api/oidvp/qrcode?ref=${encodeURIComponent(this.ref)}&transactionId=${encodeURIComponent(transactionId)}`;
+      console.log("[VCVerificationService] Making fetch request to:", url);
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Access-Token': this.apiToken,
           'Accept': 'application/json'
         }
       });
+      
+      console.log("[VCVerificationService] Fetch response received:", { status: response.status, statusText: response.statusText });
 
       if (!response.ok) {
         const error = await response.text();
+        console.error("[VCVerificationService] API error response:", error);
         throw new Error(`QR code generation failed: ${response.status} ${error}`);
       }
 
+      console.log("[VCVerificationService] Parsing JSON response...");
       const data: TwdiwQRCodeResponse = await response.json();
+      console.log("[VCVerificationService] JSON parsed successfully:", { 
+        hasTransactionId: !!data.transactionId, 
+        hasQrcodeImage: !!data.qrcodeImage, 
+        hasAuthUri: !!data.authUri 
+      });
 
-      return {
+      const result = {
         transactionId: data.transactionId,
         status: VerificationStatus.PENDING,
         authUri: data.authUri,
         qrCodeUrl: data.qrcodeImage // Map qrcodeImage to qrCodeUrl
       };
+      
+      console.log("[VCVerificationService] Returning result:", { 
+        transactionId: result.transactionId, 
+        status: result.status, 
+        hasAuthUri: !!result.authUri, 
+        hasQrCodeUrl: !!result.qrCodeUrl 
+      });
+      
+      return result;
     } catch (error) {
       console.error('VC verification initiation failed:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        apiEndpoint: this.apiEndpoint,
+        ref: this.ref,
+        hasToken: !!this.apiToken
+      });
       throw new Error('Failed to initiate VC verification');
     }
   }
 
   async checkVerificationStatus(transactionId: string): Promise<VerificationResult> {
+    console.log("[VCVerificationService] Checking verification status", { transactionId, apiEndpoint: this.apiEndpoint });
     try {
       const response = await fetch(`${this.apiEndpoint}/api/oidvp/result`, {
         method: 'POST',
@@ -111,6 +143,8 @@ export class VCVerificationService implements RankVerificationService {
         },
         body: JSON.stringify({ transactionId })
       });
+
+      console.log("[VCVerificationService] Status check response", { status: response.status, statusText: response.statusText });
 
       if (response.status === 400) {
         // 400 means user hasn't uploaded data yet (still pending)

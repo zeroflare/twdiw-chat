@@ -49,7 +49,7 @@ app.get('/forum/:forumId', authMiddleware(), async (c) => {
 
     // Get member profile
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
 
     if (!member) {
@@ -57,7 +57,7 @@ app.get('/forum/:forumId', authMiddleware(), async (c) => {
     }
 
     // Get forum
-    const forumRepo = new D1ForumRepository(c.env.DB);
+    const forumRepo = new D1ForumRepository(c.env.twdiw_chat_db);
     const forum = await forumRepo.findById(forumId);
 
     if (!forum) {
@@ -126,7 +126,7 @@ app.get('/session/:sessionId', authMiddleware(), async (c) => {
 
     // Get member profile
     const encryptionService2 = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo2 = new D1MemberProfileRepository(c.env.DB, encryptionService2);
+    const memberRepo2 = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService2);
     const member = await memberRepo2.findByOidcSubjectId(user.oidcSubjectId);
 
     if (!member) {
@@ -134,7 +134,7 @@ app.get('/session/:sessionId', authMiddleware(), async (c) => {
     }
 
     // Get chat session
-    const sessionRepo = new D1PrivateChatSessionRepository(c.env.DB);
+    const sessionRepo = new D1PrivateChatSessionRepository(c.env.twdiw_chat_db);
     const session = await sessionRepo.findById(sessionId);
 
     if (!session) {
@@ -185,7 +185,7 @@ app.post('/forum/:forumId/leave', authMiddleware(), async (c) => {
     const forumId = c.req.param('forumId');
 
     // Get forum and decrement member count
-    const forumRepo = new D1ForumRepository(c.env.DB);
+    const forumRepo = new D1ForumRepository(c.env.twdiw_chat_db);
     const forum = await forumRepo.findById(forumId);
 
     if (forum && forum.getMemberCount() > 0) {
@@ -213,7 +213,7 @@ app.post('/match', authMiddleware(), async (c) => {
 
     // Get member profile
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.DB, encryptionService);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
     const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
 
     if (!member) {
@@ -221,7 +221,7 @@ app.post('/match', authMiddleware(), async (c) => {
     }
 
     // Check if already matched today
-    const sessionRepo = new D1PrivateChatSessionRepository(c.env.DB);
+    const sessionRepo = new D1PrivateChatSessionRepository(c.env.twdiw_chat_db);
     const existingSession = await sessionRepo.findActiveSessionByMemberId(user.memberId);
     
     if (existingSession) {
@@ -233,11 +233,11 @@ app.post('/match', authMiddleware(), async (c) => {
 
     // Find a match from waiting queue (users who actively requested matching)
     const compatibleRanks = getCompatibleRanks(member.getDerivedRank());
-    const matchedMember = await findAvailableMatch(memberRepo, user.memberId, compatibleRanks, c.env.DB);
+    const matchedMember = await findAvailableMatch(memberRepo, user.memberId, compatibleRanks, c.env.twdiw_chat_db);
 
     if (!matchedMember) {
       // Add to waiting queue
-      await addToMatchingQueue(c.env.DB, user.memberId, member.getDerivedRank() || Rank.NEWBIE_VILLAGE);
+      await addToMatchingQueue(c.env.twdiw_chat_db, user.memberId, member.getDerivedRank() || Rank.NEWBIE_VILLAGE);
 
       return c.json({
         message: 'Added to matching queue. You will be notified when a match is found.',
@@ -247,8 +247,8 @@ app.post('/match', authMiddleware(), async (c) => {
 
     // Update both users' queue records to MATCHED status instead of deleting
     // This allows waiting users to discover they've been matched
-    await updateMatchingQueueStatus(c.env.DB, matchedMember.getId(), user.memberId);
-    await updateMatchingQueueStatus(c.env.DB, user.memberId, matchedMember.getId());
+    await updateMatchingQueueStatus(c.env.twdiw_chat_db, matchedMember.getId(), user.memberId);
+    await updateMatchingQueueStatus(c.env.twdiw_chat_db, user.memberId, matchedMember.getId());
 
     const session = await createPrivateChatSession(sessionRepo, user.memberId, matchedMember.getId());
 
@@ -272,7 +272,7 @@ app.get('/match/status', authMiddleware(), async (c) => {
   try {
     const user = c.get('user');
     
-    const sessionRepo = new D1PrivateChatSessionRepository(c.env.DB);
+    const sessionRepo = new D1PrivateChatSessionRepository(c.env.twdiw_chat_db);
     const activeSession = await sessionRepo.findActiveSessionByMemberId(user.memberId);
     
     if (!activeSession) {
@@ -297,7 +297,7 @@ app.delete('/match', authMiddleware(), async (c) => {
     const user = c.get('user');
     
     // Remove from matching queue
-    await removeFromMatchingQueue(c.env.DB, user.memberId);
+    await removeFromMatchingQueue(c.env.twdiw_chat_db, user.memberId);
     
     return c.json({ message: 'Match request cancelled' });
 

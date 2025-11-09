@@ -59,7 +59,7 @@ app.post('/cleanup/sessions', adminMiddleware(), async (c) => {
       return c.json({ error: 'Rate limit exceeded' }, 429);
     }
 
-    const sessionExpiryService = new SessionExpiryService(c.env.DB, c.env.ENCRYPTION_KEY);
+    const sessionExpiryService = new SessionExpiryService(c.env.twdiw_chat_db, c.env.ENCRYPTION_KEY);
     
     // Perform cleanup
     const result = await sessionExpiryService.cleanupExpiredSessions();
@@ -99,7 +99,7 @@ app.get('/sessions/stats', adminMiddleware(), async (c) => {
       return c.json({ error: 'Rate limit exceeded' }, 429);
     }
 
-    const sessionExpiryService = new SessionExpiryService(c.env.DB, c.env.ENCRYPTION_KEY);
+    const sessionExpiryService = new SessionExpiryService(c.env.twdiw_chat_db, c.env.ENCRYPTION_KEY);
     
     // Get session statistics
     const stats = await sessionExpiryService.getSessionStats();
@@ -123,13 +123,13 @@ app.get('/sessions/stats', adminMiddleware(), async (c) => {
 // GET /api/admin/health - System health check
 app.get('/health', adminMiddleware(), async (c) => {
   try {
-    const sessionExpiryService = new SessionExpiryService(c.env.DB, c.env.ENCRYPTION_KEY);
+    const sessionExpiryService = new SessionExpiryService(c.env.twdiw_chat_db, c.env.ENCRYPTION_KEY);
     
     // Basic health checks
     const stats = await sessionExpiryService.getSessionStats();
     
     // Check database connectivity
-    const dbCheck = await c.env.DB.prepare('SELECT 1 as test').first();
+    const dbCheck = await c.env.twdiw_chat_db.prepare('SELECT 1 as test').first();
     
     const health = {
       status: 'healthy',
