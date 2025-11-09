@@ -38,9 +38,22 @@ export class VCVerificationService implements RankVerificationService {
     }
   }
 
+  private generateTransactionId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+
+    // Fallback UUIDv4 implementation (RFC4122 compliant enough for sandbox)
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
   async initiateVerification(request: VerificationRequest): Promise<VerificationResult> {
     try {
-      const transactionId = `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const transactionId = this.generateTransactionId();
       const response = await fetch(`${this.apiEndpoint}/api/oidvp/qrcode?ref=${encodeURIComponent(this.ref)}&transactionId=${encodeURIComponent(transactionId)}`, {
         method: 'GET',
         headers: {
