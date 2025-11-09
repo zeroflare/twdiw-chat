@@ -269,6 +269,8 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
         message: 'Verification completed successfully'
       });
 
+    } else if (result.status === 'completed' && !result.extractedClaims) {
+      console.error('[VC verification] completed without extracted claims', { transactionId });
     } else if (result.status === 'failed' || result.status === 'expired') {
       await sessionStore.updateSession(transactionId, {
         status: result.status,
