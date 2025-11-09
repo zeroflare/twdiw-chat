@@ -64,8 +64,8 @@ app.get('/login', async (c) => {
 
     // Store with URL state as key for direct lookup
     const urlStateKey = `url_state:${authRequest.state}`;
-    if (c.env.KV) {
-      await c.env.KV.put(urlStateKey, stateData, { expirationTtl: 1200 });
+    if (c.env.twdiw_chat_session) {
+      await c.env.twdiw_chat_session.put(urlStateKey, stateData, { expirationTtl: 1200 });
       console.log('Stored in KV with URL key');
     } else {
       console.log('KV not available');
@@ -114,16 +114,16 @@ app.get('/callback', async (c) => {
 
     const kvLogData = sanitizer.sanitize(LogLevel.DEBUG, 'Looking for OIDC state in KV', {
       state,
-      hasKV: !!c.env.KV
+      hasKV: !!c.env.twdiw_chat_session
     });
     if (kvLogData.shouldLog) {
       console.log(kvLogData.message, kvLogData.data);
     }
 
     // Get stored data from KV using URL state parameter
-    if (state && c.env.KV) {
+    if (state && c.env.twdiw_chat_session) {
       const urlStateKey = `url_state:${state}`;
-      storedData = await c.env.KV.get(urlStateKey);
+      storedData = await c.env.twdiw_chat_session.get(urlStateKey);
       console.log('Retrieved from KV:', { hasData: !!storedData });
     }
 
@@ -157,8 +157,8 @@ app.get('/callback', async (c) => {
     }
 
     // Clean up KV storage
-    if (state && c.env.KV) {
-      await c.env.KV.delete(`url_state:${state}`);
+    if (state && c.env.twdiw_chat_session) {
+      await c.env.twdiw_chat_session.delete(`url_state:${state}`);
     }
 
     const oidcService = new OIDCService(c.env);
