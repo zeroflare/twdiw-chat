@@ -23,9 +23,9 @@ const app = new Hono();
 // CORS middleware
 app.use('*', cors({
   origin: [
-    'http://localhost:3000', 
-    'https://twdiw-chat-app.pages.dev',
-    /^https:\/\/.*\.twdiw-chat-app\.pages\.dev$/
+    'http://localhost:3000',
+    'https://twdiw-chat.pages.dev',
+    /^https:\/\/.*\.twdiw-chat\.pages\.dev$/
   ],
   allowHeaders: ['Content-Type', 'Authorization'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

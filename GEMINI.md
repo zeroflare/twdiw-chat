@@ -51,6 +51,7 @@ tests/
 
 ## Recent Changes
 - 001-gated-forum-matching: Added TypeScript 5.x, Node.js 20.x + wrangler, hono, oidc-client-ts, vites
+- 001-gated-forum-matching: Added TypeScript 5.x, Node.js 20.x + wrangler, hono, oidc-client-ts, vites
 - **001-gated-forum-matching (2025-11-08)**:
     - Implemented core domain layer using Domain-Driven Design (DDD).
     - Created `MemberProfile` aggregate root with rank verification logic.
@@ -61,7 +62,6 @@ tests/
     - Defined domain service interfaces (`MatchingService`, `RankVerificationService`).
     - Extensive TDD approach with high test coverage in `tests/backend/`.
 
-- **001-sandbox-api-integration**:
     - Initial setup with TypeScript and Node.js.
 
 <!-- MANUAL ADDITIONS START -->
