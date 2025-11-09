@@ -1,5 +1,17 @@
 # Architecture Decisions Record
 
+## ADR-012: Automated Project Maintenance and Context Update (2025-11-09)
+**Status**: ACCEPTED
+**Context**: The project requires a standardized closing procedure to ensure all documentation and agent context files are up-to-date.
+**Decision**: Implement a multi-step closing procedure.
+- **progress.md**: Backup, summarize, and clean the file to maintain a concise record of recent activities.
+- **Agent Context**: Execute `.specify/scripts/bash/update-agent-context.sh` to update `GEMINI.md` and other agent-specific context files based on the latest `plan.md`.
+- **Memory Files**: Manually update `.specify/memory/DECISIONS.md`, `BUNDLE_INDEX.md`, and `CHECKPOINTS.md` to reflect the session's activities. `constitution.md` is to remain unchanged.
+**Consequences**:
+- ✅ Ensures project documentation is consistently maintained.
+- ✅ Keeps AI agent context files synchronized with project state.
+- ✅ Provides a clear and repeatable process for ending a work session.
+
 ## ADR-003: Matching Queue Status Management (2025-11-08)
 **Status**: ACCEPTED
 **Context**: Waiting users couldn't discover when they were matched because queue records were deleted

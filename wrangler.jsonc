@@ -1,67 +1,63 @@
 {
-  // Top-level configuration
-  "name": "twdiw-chat",
-  "main": "src/index.ts",
-  "compatibility_date": "2024-11-01",
-  "compatibility_flags": ["nodejs_compat"],
-
-  // Build configuration for TypeScript
-  "build": {
-    "command": ""
-  },
-
-  // KV namespace for session storage
-  "kv_namespaces": [
-    {
-      "binding": "KV",
-      "id": "8fdc46912c334c8f98a88c9f9c7ccee5",
-      "preview_id": "5bfec62b48f04ca88f2681d2df1ebbcd"
-    }
-  ],
-
-  // Scheduled events (Cron jobs)
-  "triggers": {
-    "crons": ["*/5 * * * *"] // Every 5 minutes for session cleanup
-  },
-
-  // Environment variables for the Worker
-  // For local development, you can place secrets here.
-  //
-  // !!! CD/PRODUCTION NOTE !!!
-  // For Continuous Deployment, do NOT commit the real TWDIW_API_TOKEN here.
-  // It should be set as a secret in the Cloudflare dashboard or via the command:
-  // `wrangler secret put TWDIW_API_TOKEN`
-  // The variable will still be available under `c.env.TWDIW_API_TOKEN`.
-  "vars": {
-    "TWDIW_API_URL": "https://verifier-sandbox.wallet.gov.tw",
-    "OIDC_ISSUER_URL": "https://twdiw-sso.zeroflare.tw",
-    "OIDC_REDIRECT_URI": "https://twdiw-chat.csw30454.workers.dev/api/auth/callback",
-    "FRONTEND_URL": "https://twdiw-chat-app.pages.dev",
-    "TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw",
-    "TWDIW_REF": "0052696330_vc_asset_player_rank_certificate",
-    "TLKIO_BASE_URL": "https://tlk.io",
-    "TLKIO_THEME": "theme--minimal"
-  },
-
-  // Secrets (set with: wrangler secret put <NAME>)
-  // OIDC_CLIENT_ID = "bfc9e841-9845-4bc6-96e8-6f1cde6c2cb8"
-  // OIDC_CLIENT_SECRET = "0498ae88-2f81-4ea5-9123-20eff5185d8c"
-  // JWT_SECRET
-  // ENCRYPTION_KEY
-  // ADMIN_TOKEN
-
-  // D1 Database binding - Updated with actual database ID
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "twdiw-chat-db",
-      "database_id": "74cb2311-af44-4491-bf55-3c5dc2d22d55",
-      "migrations_dir": "migrations"
-    }
-  ]
-
-  // D1 Migrations Configuration
-  // Migrations are stored in ./migrations directory
-  // To apply migrations locally: wrangler d1 migrations apply twdiw-chat-db --local
-  // To apply migrations to remote: wrangler d1 migrations apply twdiw-chat-db --remote
+	// Top-level configuration
+	"name": "twdiw-chat",
+	"main": "src/index.ts",
+	"compatibility_date": "2024-11-01",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	// Build configuration for TypeScript
+	"build": {
+		"command": ""
+	},
+	// KV namespace for session storage
+	"kv_namespaces": [
+		{
+			"binding": "twdiw_chat_session",
+			"id": "3e4a0d9792ed4591b1fe3091e3c088d8"
+		}
+	],
+	// Scheduled events (Cron jobs)
+	"triggers": {
+		"crons": [
+			"*/5 * * * *"
+		] // Every 5 minutes for session cleanup
+	},
+	// Environment variables for the Worker
+	// For local development, you can place secrets here.
+	//
+	// !!! CD/PRODUCTION NOTE !!!
+	// For Continuous Deployment, do NOT commit the real TWDIW_API_TOKEN here.
+	// It should be set as a secret in the Cloudflare dashboard or via the command:
+	// `wrangler secret put TWDIW_API_TOKEN`
+	// The variable will still be available under `c.env.TWDIW_API_TOKEN`.
+	"vars": {
+		"TWDIW_API_URL": "https://verifier-sandbox.wallet.gov.tw",
+		"OIDC_ISSUER_URL": "https://twdiw-sso.zeroflare.tw",
+		"OIDC_REDIRECT_URI": "https://twdiw-chat.twdiw-chat-api.workers.dev/api/auth/callback",
+		"FRONTEND_URL": "https://twdiw-chat-app.pages.dev",
+		"TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw",
+		"TWDIW_REF": "0052696330_vc_asset_player_rank_certificate",
+		"TLKIO_BASE_URL": "https://tlk.io",
+		"TLKIO_THEME": "theme--minimal"
+	},
+	// Secrets (set with: wrangler secret put <NAME>)
+	// OIDC_CLIENT_ID = "bfc9e841-9845-4bc6-96e8-6f1cde6c2cb8"
+	// OIDC_CLIENT_SECRET = "0498ae88-2f81-4ea5-9123-20eff5185d8c"
+	// JWT_SECRET
+	// ENCRYPTION_KEY
+	// ADMIN_TOKEN
+	// D1 Database binding - Updated with actual database ID
+	"d1_databases": [
+		{
+			"binding": "twdiw_chat_db",
+			"database_name": "twdiw-chat-db",
+			"database_id": "44ca7c98-e569-4ae9-b90e-e86c5e87fc0a",
+			"migrations_dir": "migrations"
+		}
+	]
+	// D1 Migrations Configuration
+	// Migrations are stored in ./migrations directory
+	// To apply migrations locally: wrangler d1 migrations apply twdiw-chat-db --local
+	// To apply migrations to remote: wrangler d1 migrations apply twdiw-chat-db --remote
 }

@@ -1,5 +1,26 @@
 # Project Checkpoints
 
+## Checkpoint 2025-11-09: SSCI-Lite Closing Steps
+**Status**: COMPLETED
+**Summary**: Executed the standardized SSCI-Lite closing procedure to update documentation and agent context files.
+**Key Changes**:
+- Backed up and summarized `progress.md`.
+- Updated `GEMINI.md` by running the `update-agent-context.sh` script.
+- Manually updated `.specify/memory/DECISIONS.md`, `BUNDLE_INDEX.md`, and `CHECKPOINTS.md`.
+
+**Files Modified**:
+- `progress.md`
+- `GEMINI.md`
+- `.specify/memory/DECISIONS.md`
+- `.specify/memory/BUNDLE_INDEX.md`
+- `.specify/memory/CHECKPOINTS.md`
+
+**Acceptance Criteria**: ✅ PASS
+- All project documentation and agent context files are synchronized and up-to-date.
+- The closing procedure was followed correctly.
+
+**Rollback Plan**: Revert changes to the modified files.
+
 ## Checkpoint 2025-11-09: Taiwan Wallet Verifier Service Implementation
 **Status**: COMPLETED
 **Summary**: Created TaiwanWalletVerifierService adapter for Taiwan government wallet verifier API (https://verifier-sandbox.wallet.gov.tw/)
