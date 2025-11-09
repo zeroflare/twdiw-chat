@@ -217,6 +217,8 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
     }
 
     // Production mode: Poll twdiw API
+    console.log('[VC verification] polling transaction', { transactionId, memberId: user.memberId });
+
     const vcService = new VCVerificationService(c.env);
     const result = await vcService.checkVerificationStatus(transactionId);
 
