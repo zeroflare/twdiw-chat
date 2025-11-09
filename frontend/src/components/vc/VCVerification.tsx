@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { api, VerificationResult } from '../../services/api';
+import { usePolling } from '../../hooks/usePolling';
 
 export function mergeVerificationState(
   previous: VerificationResult | null,
@@ -40,6 +41,10 @@ export function VCVerification() {
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<'tx' | 'auth' | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
+  const [pollingEnabled, setPollingEnabled] = useState(false);
+  const [pollIntervalMs, setPollIntervalMs] = useState(15000);
+  const [pollStartTime, setPollStartTime] = useState<number | null>(null);
+  const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
 
   const activeWorkflowStep = useMemo(() => {
     if (error) {
@@ -97,6 +102,12 @@ export function VCVerification() {
   const executePoll = async () => {
       if (!verification?.transactionId) return null;
 
+      if (pollStartTime && Date.now() - pollStartTime > MAX_POLL_DURATION_MS) {
+        setPollingEnabled(false);
+        setError('查詢逾時，請重新產生 QR Code');
+        return null;
+      }
+
       try {
         const response = await api.pollVCVerification(verification.transactionId);
         if (response.error) {
@@ -107,6 +118,7 @@ export function VCVerification() {
         setVerification(prev => mergeVerificationState(prev, result));
 
         if (result.status === 'completed') {
+          setPollingEnabled(false);
           setError(null);
           try {
             await refreshUser();
@@ -117,21 +129,41 @@ export function VCVerification() {
         }
 
         if (result.status === 'failed' || result.status === 'expired') {
+          setPollingEnabled(false);
           setError(result.error || '驗證失敗');
           return result;
         }
 
+        setPollIntervalMs(prev => Math.min(prev + 5000, 60000));
+
         return result;
       } catch (err) {
         console.error('Polling error:', err);
+        setPollingEnabled(false);
         throw err;
       }
     };
+
+  const { stop: stopPolling } = usePolling(
+    executePoll,
+    {
+      interval: pollIntervalMs,
+      enabled: pollingEnabled && verification?.status === 'pending',
+      onError: (err) => {
+        setError(err.message);
+        setPollingEnabled(false);
+      },
+    }
+  );
 
   const startVerification = async () => {
     setLoading(true);
     setError(null);
     setVerification(null);
+    setPollingEnabled(false);
+    setPollIntervalMs(15000);
+    setPollStartTime(null);
+    stopPolling();
 
     try {
       const response = await api.startVCVerification({ force: true });
@@ -150,6 +182,9 @@ export function VCVerification() {
   const resetVerification = () => {
     setVerification(null);
     setError(null);
+    setPollingEnabled(false);
+    setPollStartTime(null);
+    stopPolling();
   };
 
   const handleManualRefresh = async () => {
@@ -162,6 +197,15 @@ export function VCVerification() {
     } finally {
       setManualRefreshing(false);
     }
+  };
+
+  const handleEnablePolling = () => {
+    if (!verification?.transactionId) return;
+    setError(null);
+    setPollIntervalMs(15000);
+    setPollStartTime(Date.now());
+    setPollingEnabled(true);
+    executePoll();
   };
 
   if (!user) {
@@ -330,17 +374,30 @@ export function VCVerification() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-800">
-              <p className="font-medium text-gray-900">掃描完成後再查詢結果</p>
-              <p className="mt-1 text-xs text-gray-500">
-                送出後按下方按鈕查詢一次即可，不會自動輪詢。
+            <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-800 space-y-2">
+              <p className="font-medium text-gray-900">掃描完成後的查詢方式</p>
+              <p className="text-xs text-gray-500">
+                可啟動自動查詢（最多 5 分鐘，間隔逐步拉長），也可以隨時手動查詢一次。
               </p>
+              {!pollingEnabled ? (
+                <button
+                  onClick={handleEnablePolling}
+                  disabled={!verification?.transactionId}
+                  className="w-full rounded bg-primary-500 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-600 disabled:opacity-50"
+                >
+                  我已在錢包送出，開始自動查詢
+                </button>
+              ) : (
+                <div className="rounded bg-primary-50 px-3 py-2 text-xs text-primary-700">
+                  自動查詢中，間隔 {Math.round(pollIntervalMs / 1000)} 秒，最多 5 分鐘後自動停止。
+                </div>
+              )}
               <button
                 onClick={handleManualRefresh}
                 disabled={manualRefreshing}
-                className="mt-2 w-full rounded border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="w-full rounded border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
-                {manualRefreshing ? '查詢中...' : '立即手動查詢一次'}
+                {manualRefreshing ? '查詢中...' : '立刻手動查詢一次'}
               </button>
             </div>
 
@@ -354,7 +411,7 @@ export function VCVerification() {
                   <span>等待皮夾回傳驗證結果中...</span>
                 </div>
                 <p className="mt-2 text-xs">
-                  系統不會自動查詢，請在錢包送出後按「手動查詢一次」，或重新產生 QR。
+                  如果需要，可手動查詢或重新產生 QR；自動查詢最多持續 5 分鐘。
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
                   <button
