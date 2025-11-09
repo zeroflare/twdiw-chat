@@ -11,6 +11,7 @@ import { D1MemberProfileRepository } from '../infrastructure/repositories/D1Memb
 import { authMiddleware } from '../middleware/auth';
 
 const app = new Hono();
+const SESSION_TTL_MS = 5 * 60 * 1000;
 
 // Rate limiting map (in production, use KV or external service)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -47,14 +48,23 @@ app.post('/start', authMiddleware(), async (c) => {
     // Check if member already has pending verification
     const sessionStore = new VCVerificationSessionStore(c.env.DB);
     const existingSession = await sessionStore.getSessionByMember(memberId);
-    
+    const now = Date.now();
+
     if (existingSession && existingSession.status === 'pending') {
-      return c.json({
-        transactionId: existingSession.transactionId,
-        qrCodeUrl: existingSession.qrCodeUrl,
-        authUri: existingSession.authUri,
-        status: 'pending',
-        message: 'Verification already in progress'
+      if (existingSession.expiresAt > now) {
+        return c.json({
+          transactionId: existingSession.transactionId,
+          qrCodeUrl: existingSession.qrCodeUrl,
+          authUri: existingSession.authUri,
+          status: 'pending',
+          message: 'Verification already in progress'
+        });
+      }
+
+      await sessionStore.updateSession(existingSession.transactionId, {
+        status: 'expired',
+        error: 'Verification session expired before completion',
+        completedAt: now
       });
     }
 
@@ -68,7 +78,7 @@ app.post('/start', authMiddleware(), async (c) => {
         authUri: `https://mock-wallet.example.com/verify?tx=${mockTransactionId}`,
         status: 'pending' as const,
         pollInterval: 2000,
-        expiresAt: Date.now() + 10 * 60 * 1000
+        expiresAt: now + SESSION_TTL_MS
       };
 
       // Store mock session
@@ -78,7 +88,7 @@ app.post('/start', authMiddleware(), async (c) => {
         status: 'pending',
         qrCodeUrl: mockResult.qrCodeUrl,
         authUri: mockResult.authUri,
-        expiresAt: mockResult.expiresAt
+        expiresAt: now + SESSION_TTL_MS
       });
 
       return c.json(mockResult);
@@ -95,7 +105,7 @@ app.post('/start', authMiddleware(), async (c) => {
       status: 'pending',
       qrCodeUrl: result.qrCodeUrl, // Store the base64 image
       authUri: result.authUri,
-      expiresAt: Date.now() + 10 * 60 * 1000
+      expiresAt: now + SESSION_TTL_MS
     });
 
     return c.json({
