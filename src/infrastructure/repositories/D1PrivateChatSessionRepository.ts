@@ -370,6 +370,39 @@ export class D1PrivateChatSessionRepository implements IPrivateChatSessionReposi
     }
   }
 
+  async findByStatus(status: SessionStatus | string): Promise<PrivateChatSession[]> {
+    try {
+      const { results } = await this.db
+        .prepare(
+          `SELECT id, member_a_id, member_b_id, tlk_channel_id, type,
+                  status, version, created_at, updated_at, expires_at
+           FROM private_chat_sessions
+           WHERE status = ?
+           ORDER BY created_at DESC`
+        )
+        .bind(status)
+        .all<{
+          id: string;
+          member_a_id: string;
+          member_b_id: string;
+          tlk_channel_id: string;
+          type: string;
+          status: string;
+          version: number;
+          created_at: number;
+          updated_at: number;
+          expires_at: number;
+        }>();
+
+      return results.map((row) => this.reconstitute(row));
+    } catch (error) {
+      throw new RepositoryException(
+        'Failed to find sessions by status',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
   async findByType(type: SessionType): Promise<PrivateChatSession[]> {
     try {
       const { results } = await this.db
