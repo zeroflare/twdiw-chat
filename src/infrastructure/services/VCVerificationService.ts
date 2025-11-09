@@ -125,6 +125,14 @@ export class VCVerificationService implements RankVerificationService {
       }
 
       const data: TwdiwStatusResponse = await response.json();
+      console.log('[VC verification] twdiw status response', {
+        transactionId,
+        status: data.status ?? (typeof data.verifyResult === 'boolean' ? (data.verifyResult ? 'completed' : 'failed') : 'unknown'),
+        verifyResult: data.verifyResult,
+        resultDescription: data.resultDescription,
+        errorCode: data.errorCode,
+        hasData: Array.isArray(data.data) && data.data.length > 0
+      });
 
       // Legacy status field support
       if (data.status) {
