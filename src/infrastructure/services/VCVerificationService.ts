@@ -317,15 +317,48 @@ export class VCVerificationService implements RankVerificationService {
 
   private normalizeRank(rank: string): string {
     const rankStr = rank.toString().toLowerCase();
-    
-    if (rankStr.includes('gold') || rankStr.includes('金') || rankStr === '1') {
-      return Rank.EARTH_OL_GRADUATE;
-    } else if (rankStr.includes('silver') || rankStr.includes('銀') || rankStr === '2') {
-      return Rank.LIFE_WINNER_S;
-    } else if (rankStr.includes('bronze') || rankStr.includes('銅') || rankStr === '3') {
-      return Rank.NEWBIE_VILLAGE;
-    } else {
-      throw new Error(`Unknown rank value: ${rank}`);
+
+    const aliasMap: Record<string, Rank> = {
+      gold: Rank.EARTH_OL_GRADUATE,
+      '地球ol財富畢業證書': Rank.EARTH_OL_GRADUATE,
+      '地球ol財富畢業證書持有者': Rank.EARTH_OL_GRADUATE,
+      'earth_ol_graduate': Rank.EARTH_OL_GRADUATE,
+      '金卡': Rank.EARTH_OL_GRADUATE,
+      '人生勝利組': Rank.LIFE_WINNER_S,
+      '人生勝利組s級玩家卡': Rank.LIFE_WINNER_S,
+      silver: Rank.LIFE_WINNER_S,
+      '尊爵不凡．小資族認證': Rank.DISTINGUISHED_PETTY,
+      '尊爵不凡': Rank.DISTINGUISHED_PETTY,
+      '小資族認證': Rank.DISTINGUISHED_PETTY,
+      '準富豪vip登錄證': Rank.QUASI_WEALTHY_VIP,
+      '準富豪': Rank.QUASI_WEALTHY_VIP,
+      'vip登錄證': Rank.QUASI_WEALTHY_VIP,
+      '新手村榮譽村民證': Rank.NEWBIE_VILLAGE,
+      '新手村榮譽村民證持有者': Rank.NEWBIE_VILLAGE,
+      '新手村': Rank.NEWBIE_VILLAGE,
+      bronze: Rank.NEWBIE_VILLAGE
+    };
+
+    for (const [alias, mappedRank] of Object.entries(aliasMap)) {
+      if (rankStr.includes(alias)) {
+        return mappedRank;
+      }
+    }
+
+    switch (rankStr) {
+      case '1':
+        return Rank.EARTH_OL_GRADUATE;
+      case '2':
+        return Rank.LIFE_WINNER_S;
+      case '3':
+        return Rank.QUASI_WEALTHY_VIP;
+      case '4':
+        return Rank.DISTINGUISHED_PETTY;
+      case '5':
+        return Rank.NEWBIE_VILLAGE;
+      default:
+        console.error('Unknown rank value received from twdiw', { raw: rank });
+        throw new Error(`Unknown rank value: ${rank}`);
     }
   }
 }

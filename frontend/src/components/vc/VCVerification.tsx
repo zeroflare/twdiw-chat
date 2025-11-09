@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { usePolling } from '../../hooks/usePolling';
 import { api, VerificationResult } from '../../services/api';
 
 export function mergeVerificationState(
@@ -40,8 +39,6 @@ export function VCVerification() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<'tx' | 'auth' | null>(null);
-  const [pollingEnabled, setPollingEnabled] = useState(false);
-  const [pollIntervalMs, setPollIntervalMs] = useState(15000);
   const [manualRefreshing, setManualRefreshing] = useState(false);
 
   const activeWorkflowStep = useMemo(() => {
@@ -110,7 +107,6 @@ export function VCVerification() {
         setVerification(prev => mergeVerificationState(prev, result));
 
         if (result.status === 'completed') {
-          setPollingEnabled(false);
           setError(null);
           try {
             await refreshUser();
@@ -121,12 +117,9 @@ export function VCVerification() {
         }
 
         if (result.status === 'failed' || result.status === 'expired') {
-          setPollingEnabled(false);
           setError(result.error || '驗證失敗');
           return result;
         }
-
-        setPollIntervalMs(prev => Math.min(prev + 5000, 60000));
 
         return result;
       } catch (err) {
@@ -135,26 +128,11 @@ export function VCVerification() {
       }
     };
 
-  const { stop: stopPolling } = usePolling(
-    executePoll,
-    {
-      interval: pollIntervalMs,
-      enabled: pollingEnabled && verification?.status === 'pending',
-      onError: (err) => {
-        setError(err.message);
-        stopPolling();
-      },
-    }
-  );
-
   const startVerification = async () => {
     const hadExistingSession = Boolean(verification);
     setLoading(true);
     setError(null);
-    stopPolling();
     setVerification(null);
-    setPollingEnabled(false);
-    setPollIntervalMs(15000);
 
     try {
       const response = await api.startVCVerification({ force: hadExistingSession });
@@ -173,14 +151,6 @@ export function VCVerification() {
   const resetVerification = () => {
     setVerification(null);
     setError(null);
-    stopPolling();
-    setPollingEnabled(false);
-    setPollIntervalMs(15000);
-  };
-
-  const handleEnablePolling = () => {
-    setPollIntervalMs(15000);
-    setPollingEnabled(true);
   };
 
   const handleManualRefresh = async () => {
@@ -362,23 +332,10 @@ export function VCVerification() {
             </div>
 
             <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-800">
-              <p className="font-medium text-gray-900">掃描完成後再啟動查詢，避免過早打擾 workflow</p>
+              <p className="font-medium text-gray-900">掃描完成後再查詢結果，避免過早打擾 workflow</p>
               <p className="mt-1 text-xs text-gray-500">
-                twdiw 建議在錢包送出 VP 後再查詢結果，以避免出現 c9998 錯誤。
+                送出後按下方按鈕查詢一次即可，不會自動輪詢。
               </p>
-              {!pollingEnabled ? (
-                <button
-                  onClick={handleEnablePolling}
-                  disabled={manualRefreshing}
-                  className="mt-3 w-full rounded bg-primary-500 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-600 disabled:opacity-50"
-                >
-                  我已掃描並送出，開始查詢
-                </button>
-              ) : (
-                <div className="mt-3 rounded bg-primary-50 px-3 py-2 text-xs text-primary-700">
-                  已啟動自動查詢，間隔 {Math.round(pollIntervalMs / 1000)} 秒，會逐步放慢以符合 workflow。
-                </div>
-              )}
               <button
                 onClick={handleManualRefresh}
                 disabled={manualRefreshing}
@@ -398,7 +355,7 @@ export function VCVerification() {
                   <span>等待皮夾回傳驗證結果中...</span>
                 </div>
                 <p className="mt-2 text-xs">
-                  系統目前每 {Math.round(pollIntervalMs / 1000)} 秒查詢一次。若需要，可手動查詢或重新產生 QR。
+                  系統不會自動查詢，請在錢包送出後按「手動查詢一次」，或重新產生 QR。
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
                   <button
