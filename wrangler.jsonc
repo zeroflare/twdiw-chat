@@ -2,6 +2,7 @@
 	// Top-level configuration
 	"name": "twdiw-chat",
 	"main": "src/index.ts",
+	"account_id": "b9ddfa17dcee5a813831cac6e70b197e",
 	"compatibility_date": "2024-11-01",
 	"compatibility_flags": [
 		"nodejs_compat"

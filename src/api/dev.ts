@@ -4,7 +4,8 @@
  */
 
 import { Hono } from 'hono';
-import { Rank } from '../domain/entities/MemberProfile';
+import { Rank, MemberProfile } from '../domain/entities/MemberProfile';
+import { EncryptedPersonalInfo } from '../domain/value-objects/EncryptedPersonalInfo';
 import { setCookie } from 'hono/cookie';
 import { MockAuthService } from '../infrastructure/auth/MockAuthService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
@@ -110,6 +111,50 @@ app.post('/login/:userId', async (c) => {
   } catch (error) {
     console.error('Mock login failed:', error);
     return c.json({ error: 'Mock login failed' }, 500);
+  }
+});
+
+// POST /api/dev/create-test-user - Create test user for VC verification
+app.post('/create-test-user', async (c) => {
+  try {
+    const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
+    
+    // Check if user already exists
+    try {
+      const existing = await memberRepo.findByOidcSubjectId('testuser@example.com');
+      if (existing) {
+        return c.json({ message: 'Test user already exists', user: existing });
+      }
+    } catch (error) {
+      // User doesn't exist, continue to create
+    }
+    
+    // Create new test user
+    const encryptedGender = await EncryptedPersonalInfo.create('Male', encryptionService);
+    const encryptedInterests = await EncryptedPersonalInfo.create('測試興趣', encryptionService);
+    
+    const member = MemberProfile.create(
+      'testuser@example.com',
+      'Test User Need VC',
+      encryptedGender,
+      encryptedInterests
+    );
+    
+    await memberRepo.save(member);
+    
+    return c.json({ 
+      message: 'Test user created successfully',
+      user: {
+        id: member.getId(),
+        oidcSubjectId: 'testuser@example.com',
+        nickname: '測試用戶',
+        status: member.getStatus()
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create test user:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Failed to create test user' }, 500);
   }
 });
 

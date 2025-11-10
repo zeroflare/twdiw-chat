@@ -1,3 +1,22 @@
+## Checkpoint 2025-11-10: Fix VC Verification Polling Mechanism
+**Status**: COMPLETED
+**Summary**: Fixed the frontend VC verification polling mechanism to ensure timely status updates after QR code generation.
+**Key Changes**:
+- Enhanced `executePoll` with better error handling.
+- Ensured polling starts immediately after QR code generation in `startVerification`.
+- Improved polling state management with `shouldEnablePolling`.
+- Added detailed logging to trace polling status.
+
+**Files Modified**:
+- `frontend/src/components/vc/VCVerification.tsx`
+
+**Acceptance Criteria**: ✅ PASS
+- Polling starts immediately when the QR code is displayed.
+- Verification status updates are reflected in the UI.
+- Polling state is managed reliably.
+
+**Rollback Plan**: Revert changes in `frontend/src/components/vc/VCVerification.tsx`.
+
 # Architecture Decisions Record
 
 ## ADR-013: Automated Project Maintenance and Context Update (2025-11-09)

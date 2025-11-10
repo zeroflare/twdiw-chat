@@ -73,33 +73,33 @@ app.post('/start', authMiddleware(), async (c) => {
       });
     }
 
-    // Development mode: return mock verification
-    const isDev = c.env.DEV_MODE === 'true' || c.env.NODE_ENV === 'development';
-    if (isDev) {
-      const mockTransactionId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const mockResult = {
-        transactionId: mockTransactionId,
-        qrCodeUrl: `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk1vY2sgUVIgQ29kZTwvdGV4dD48L3N2Zz4=`,
-        authUri: `https://mock-wallet.example.com/verify?tx=${mockTransactionId}`,
-        status: 'pending' as const,
-        pollInterval: 2000,
-        expiresAt: now + SESSION_TTL_MS
-      };
+    // Development mode: return mock verification (DISABLED for real testing)
+    // const isDev = c.env.DEV_MODE === 'true' || c.env.NODE_ENV === 'development';
+    // if (isDev) {
+    //   const mockTransactionId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    //   const mockResult = {
+    //     transactionId: mockTransactionId,
+    //     qrCodeUrl: `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzMzMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk1vY2sgUVIgQ29kZTwvdGV4dD48L3N2Zz4=`,
+    //     authUri: `https://mock-wallet.example.com/verify?tx=${mockTransactionId}`,
+    //     status: 'pending' as const,
+    //     pollInterval: 2000,
+    //     expiresAt: now + SESSION_TTL_MS
+    //   };
 
-      // Store mock session
-      await sessionStore.createSession({
-        transactionId: mockResult.transactionId,
-        memberId,
-        status: 'pending',
-        qrCodeUrl: mockResult.qrCodeUrl,
-        authUri: mockResult.authUri,
-        expiresAt: now + SESSION_TTL_MS
-      });
+    //   // Store mock session
+    //   await sessionStore.createSession({
+    //     transactionId: mockResult.transactionId,
+    //     memberId,
+    //     status: 'pending',
+    //     qrCodeUrl: mockResult.qrCodeUrl,
+    //     authUri: mockResult.authUri,
+    //     expiresAt: now + SESSION_TTL_MS
+    //   });
 
-      return c.json(mockResult);
-    }
+    //   return c.json(mockResult);
+    // }
 
-    // Production mode: use real VC verification service
+    // Always use real VC verification service
     console.log('[VC verification] Creating VCVerificationService...');
     const vcService = new VCVerificationService(c.env);
     console.log('[VC verification] VCVerificationService created, calling initiateVerification...');

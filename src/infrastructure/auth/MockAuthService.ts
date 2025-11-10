@@ -21,6 +21,12 @@ export class MockAuthService {
   // Test users for development
   private mockUsers: MockUser[] = [
     {
+      id: 'test-user-need-vc',
+      oidcSubjectId: 'mockuser@test.com',
+      nickname: 'Mock Test User (需要驗證)',
+      status: 'GENERAL'
+    },
+    {
       id: 'user-1',
       oidcSubjectId: 'mock-oidc-1',
       nickname: '測試用戶 (一般)',

@@ -25,9 +25,11 @@ app.use('*', cors({
   origin: [
     'http://localhost:3000',
     'https://twdiw-chat.pages.dev',
-    /^https:\/\/.*\.twdiw-chat\.pages\.dev$/
+    'https://twdiw-chat-new.pages.dev',
+    /^https:\/\/.*\.twdiw-chat\.pages\.dev$/,
+    /^https:\/\/.*\.twdiw-chat-new\.pages\.dev$/
   ],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Mock-User-Id'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
 

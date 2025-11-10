@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { api, VerificationResult } from '../../services/api';
 import { usePolling } from '../../hooks/usePolling';
+import { logger } from '../../utils/logger';
 
 export function mergeVerificationState(
   previous: VerificationResult | null,
@@ -52,9 +53,30 @@ export function VCVerification() {
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<'tx' | 'auth' | null>(null);
   const [pollingEnabled, setPollingEnabled] = useState(false);
-  const [pollIntervalMs, setPollIntervalMs] = useState(5000);
-  const [pollStartTime, setPollStartTime] = useState<number | null>(null);
-  const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
+
+  // Auto-check for pending verification on component mount
+  useEffect(() => {
+    const checkPendingVerification = async () => {
+      if (!user || user.status === 'VERIFIED') return;
+      
+      // Check if there's a pending verification in session storage
+      const pendingTxId = sessionStorage.getItem('pendingVerificationTxId');
+      if (pendingTxId) {
+        logger.log('[VCVerification] Found pending verification, starting auto-poll:', pendingTxId);
+        
+        // Create a mock verification object to start polling
+        setVerification({
+          transactionId: pendingTxId,
+          status: 'pending',
+          qrCodeUrl: '',
+          authUri: ''
+        });
+        setPollingEnabled(true);
+      }
+    };
+
+    checkPendingVerification();
+  }, [user]);
 
   const activeWorkflowStep = useMemo(() => {
     if (error) {
@@ -110,83 +132,80 @@ export function VCVerification() {
   };
 
   const executePoll = async () => {
-      // Use a ref to get the latest verification state
-      if (!verification?.transactionId) {
-        console.log('[VCVerification] executePoll called but no transactionId available');
-        return null;
+    logger.log('[VCVerification] executePoll called');
+    
+    if (!verification?.transactionId) {
+      logger.log('[VCVerification] No transactionId, skipping poll');
+      return null;
+    }
+
+    logger.log('[VCVerification] Polling transactionId:', verification.transactionId);
+    logger.log('[VCVerification] API baseUrl:', 'https://twdiw-chat.twdiw-chat-api.workers.dev/api');
+
+    try {
+      logger.log('[VCVerification] Making API call to pollVCVerification...');
+      const response = await api.pollVCVerification(verification.transactionId);
+      logger.log('[VCVerification] Poll response received:', response);
+
+      if (response.error) {
+        logger.error('[VCVerification] API returned error:', response.error);
+        throw new Error(response.error);
       }
 
-      console.log('[VCVerification] Executing poll for transactionId:', verification.transactionId);
+      const result = response.data!;
+      logger.log('[VCVerification] Poll result status:', result.status);
+      logger.log('[VCVerification] Poll result data:', result);
+      
+      setVerification(prev => mergeVerificationState(prev, result));
 
-      if (pollStartTime && Date.now() - pollStartTime > MAX_POLL_DURATION_MS) {
-        console.log('[VCVerification] Poll timeout reached');
+      if (result.status === 'completed' || result.status === 'COMPLETED') {
+        logger.log('[VCVerification] Verification completed, refreshing user');
         setPollingEnabled(false);
-        setError('查詢逾時，請重新產生 QR Code');
-        return null;
-      }
-
-      try {
-        console.log('[VCVerification] Calling API pollVCVerification...');
-        const response = await api.pollVCVerification(verification.transactionId);
-        console.log('[VCVerification] Poll response received:', response);
-
-        if (response.error) {
-          throw new Error(response.error);
+        
+        // Clear pending verification from session storage
+        sessionStorage.removeItem('pendingVerificationTxId');
+        
+        // Refresh user data to get updated status
+        try {
+          logger.log('[VCVerification] Calling refreshUser...');
+          await refreshUser();
+          logger.log('[VCVerification] User refreshed successfully');
+        } catch (refreshError) {
+          logger.error('[VCVerification] Failed to refresh user:', refreshError);
+          // Still show success message even if refresh fails
         }
-
-        const result = response.data!;
-        console.log('[VCVerification] Poll result:', { status: result.status, extractedClaims: result.extractedClaims });
-        setVerification(prev => mergeVerificationState(prev, result));
-
-        if (result.status === 'completed') {
-          console.log('[VCVerification] Verification completed, stopping polling and refreshing user');
-          setPollingEnabled(false);
-          setError(null);
-          try {
-            await refreshUser();
-            console.log('[VCVerification] User refreshed successfully');
-          } catch (err) {
-            console.error('Failed to refresh user after VC verification:', err);
-          }
-          return result;
-        }
-
-        if (result.status === 'failed' || result.status === 'expired') {
-          console.log('[VCVerification] Verification failed or expired');
-          setPollingEnabled(false);
-          setError(result.error || '驗證失敗');
-          return result;
-        }
-
-        // Increase poll interval gradually for pending status
-        setPollIntervalMs(prev => Math.min(prev + 2000, 30000)); // Slower increase, max 30s
-
-        return result;
-      } catch (err) {
-        console.error('[VCVerification] Polling error:', err);
+      } else if (result.status === 'failed' || result.status === 'expired' || result.status === 'FAILED' || result.status === 'EXPIRED') {
+        logger.log('[VCVerification] Verification failed/expired:', result.status);
         setPollingEnabled(false);
-        throw err;
+        setError(result.error || '驗證失敗');
+      } else {
+        logger.log('[VCVerification] Still pending, will continue polling');
       }
-    };
 
-  const shouldEnablePolling = pollingEnabled && verification?.status === 'pending' && !!verification?.transactionId;
+      return result;
+    } catch (err) {
+      logger.error('[VCVerification] Poll error:', err);
+      setPollingEnabled(false);
+      setError(err instanceof Error ? err.message : '輪詢失敗');
+      return null;
+    }
+  };
 
-  console.log('[VCVerification] Polling state:', {
+  const shouldEnablePolling = pollingEnabled && (verification?.status === 'pending' || verification?.status === 'PENDING');
+
+  logger.log('[VCVerification] Polling state:', {
     pollingEnabled,
     verificationStatus: verification?.status,
-    hasTransactionId: !!verification?.transactionId,
-    shouldEnablePolling,
-    pollIntervalMs
+    shouldEnablePolling
   });
 
   const { stop: stopPolling } = usePolling(
     executePoll,
     {
-      interval: pollIntervalMs,
+      interval: 3000, // Fixed 3 second interval
       enabled: shouldEnablePolling,
       onError: (err) => {
-        console.error('[VCVerification] Polling error received in onError:', err);
-        setError(err.message);
+        logger.error('[VCVerification] Polling error:', err);
         setPollingEnabled(false);
       },
     }
@@ -197,8 +216,6 @@ export function VCVerification() {
     setError(null);
     setVerification(null);
     setPollingEnabled(false);
-    setPollIntervalMs(5000); // Start with shorter interval
-    setPollStartTime(null);
     stopPolling();
 
     try {
@@ -208,26 +225,19 @@ export function VCVerification() {
       }
 
       const result = response.data!;
-      console.log('[VCVerification] QR code generated:', {
-        transactionId: result.transactionId,
-        status: result.status,
-        hasQrCode: !!result.qrCodeUrl,
-        hasAuthUri: !!result.authUri
-      });
-
-      // Set verification state first
+      logger.log('[VCVerification] Verification started:', result);
+      logger.log('[VCVerification] Result status:', result.status);
+      logger.log('[VCVerification] Status comparison:', result.status === 'pending', result.status === 'PENDING');
+      
       setVerification(result);
 
-      // Only start polling if status is pending
-      if (result.status === 'pending') {
-        console.log('[VCVerification] Starting polling immediately after QR code generation');
-        setPollStartTime(Date.now());
-        // Use setTimeout to ensure state update is processed before enabling polling
-        setTimeout(() => {
-          setPollingEnabled(true);
-        }, 0);
+      if (result.status === 'pending' || result.status === 'PENDING') {
+        logger.log('[VCVerification] Starting polling - status is pending');
+        // Store transaction ID for auto-resume
+        sessionStorage.setItem('pendingVerificationTxId', result.transactionId);
+        setPollingEnabled(true);
       } else {
-        console.log('[VCVerification] Not starting polling - status is:', result.status);
+        logger.log('[VCVerification] Not starting polling - status is:', result.status);
       }
 
     } catch (err) {
@@ -241,7 +251,7 @@ export function VCVerification() {
     setVerification(null);
     setError(null);
     setPollingEnabled(false);
-    setPollStartTime(null);
+    sessionStorage.removeItem('pendingVerificationTxId');
     stopPolling();
   };
 

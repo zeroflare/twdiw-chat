@@ -29,7 +29,7 @@ export interface VerificationResult {
   transactionId: string;
   qrCodeUrl?: string;
   authUri?: string;
-  status: 'pending' | 'completed' | 'failed' | 'expired';
+  status: 'pending' | 'completed' | 'failed' | 'expired' | 'PENDING' | 'COMPLETED' | 'FAILED' | 'EXPIRED';
   pollInterval?: number;
   extractedClaims?: {
     did: string;
@@ -46,7 +46,7 @@ export interface MockUser {
 }
 
 class ApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || 'https://twdiw-chat.twdiw-chat-api.workers.dev/api';
+  private baseUrl = 'https://twdiw-chat.twdiw-chat-api.workers.dev/api'; // Always use cloud backend
   private isDev = import.meta.env.DEV || window.location.hostname === 'localhost';
 
   private async request<T>(
@@ -62,6 +62,12 @@ class ApiService {
       
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Add mock user ID header for development
+      const mockUserId = localStorage.getItem('mockUserId');
+      if (mockUserId && this.isDev) {
+        headers['X-Mock-User-Id'] = mockUserId;
       }
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {

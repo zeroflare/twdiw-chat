@@ -37,20 +37,26 @@ async function handleMockAuth(c: Context, next: Next) {
   try {
     // Check for mock user ID in header only
     const mockUserId = c.req.header('X-Mock-User-Id') || 'user-2'; // Default to LIFE_WINNER_S user
+    console.log('[MockAuth] Mock user ID:', mockUserId);
     
     const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
     const mockUser = mockAuthService.getMockUser(mockUserId);
+    console.log('[MockAuth] Mock user found:', !!mockUser, mockUser?.oidcSubjectId);
     
     if (!mockUser) {
+      console.log('[MockAuth] Mock user not found for ID:', mockUserId);
       return c.json({ error: 'Mock user not found' }, 401);
     }
 
     // Find actual member in database by OIDC subject ID
     const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
     const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
+    console.log('[MockAuth] Looking for member with OIDC subject:', mockUser.oidcSubjectId);
     const member = await memberRepo.findByOidcSubjectId(mockUser.oidcSubjectId);
+    console.log('[MockAuth] Member found in database:', !!member, member?.getId());
     
     if (!member) {
+      console.log('[MockAuth] Member not found in database for OIDC subject:', mockUser.oidcSubjectId);
       return c.json({ error: 'Member not found in database' }, 404);
     }
 
