@@ -99,7 +99,7 @@ app.get('/', optionalAuthMiddleware(), async (c) => {
 
     return c.json({ forums });
   } catch (error) {
-    console.error('Get forums failed:', error);
+    console.error('Get forums failed:', error); console.error('Error details:', error.message, error.stack);
     return c.json({ error: 'Failed to get forums' }, 500);
   }
 });

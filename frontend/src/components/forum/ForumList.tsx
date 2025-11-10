@@ -22,7 +22,7 @@ export function ForumList() {
 
   useEffect(() => {
     loadForums();
-  }, []);
+  }, [user?.status]); // 監聽用戶狀態變化
 
   const loadForums = async () => {
     try {

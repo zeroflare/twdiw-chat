@@ -139,8 +139,16 @@ export function VCVerification() {
       return null;
     }
 
+    // Don't poll if verification is already completed
+    if (verification.status === 'completed' || verification.status === 'COMPLETED') {
+      logger.log('[VCVerification] Verification already completed, stopping poll');
+      setPollingEnabled(false);
+      stopPolling();
+      return null;
+    }
+
     logger.log('[VCVerification] Polling transactionId:', verification.transactionId);
-    logger.log('[VCVerification] API baseUrl:', 'https://twdiw-chat.twdiw-chat-api.workers.dev/api');
+    logger.log('[VCVerification] API baseUrl:', '/api');
 
     try {
       logger.log('[VCVerification] Making API call to pollVCVerification...');
@@ -160,7 +168,14 @@ export function VCVerification() {
 
       if (result.status === 'completed' || result.status === 'COMPLETED') {
         logger.log('[VCVerification] Verification completed, refreshing user');
+        logger.log('[VCVerification] Setting pollingEnabled to false...');
+        
+        // Immediately stop polling
+        stopPolling();
         setPollingEnabled(false);
+        
+        logger.log('[VCVerification] Current verification state before update:', verification);
+        logger.log('[VCVerification] New result to merge:', result);
         
         // Clear pending verification from session storage
         sessionStorage.removeItem('pendingVerificationTxId');
@@ -174,6 +189,8 @@ export function VCVerification() {
           logger.error('[VCVerification] Failed to refresh user:', refreshError);
           // Still show success message even if refresh fails
         }
+        
+        logger.log('[VCVerification] Completed processing finished');
       } else if (result.status === 'failed' || result.status === 'expired' || result.status === 'FAILED' || result.status === 'EXPIRED') {
         logger.log('[VCVerification] Verification failed/expired:', result.status);
         setPollingEnabled(false);
@@ -202,7 +219,7 @@ export function VCVerification() {
   const { stop: stopPolling } = usePolling(
     executePoll,
     {
-      interval: 3000, // Fixed 3 second interval
+      interval: 5000, // Increased to 5 seconds to reduce API load
       enabled: shouldEnablePolling,
       onError: (err) => {
         logger.error('[VCVerification] Polling error:', err);
@@ -212,6 +229,7 @@ export function VCVerification() {
   );
 
   const startVerification = async () => {
+    console.log('[VCVerification] Starting verification with force=true...');
     setLoading(true);
     setError(null);
     setVerification(null);
@@ -219,8 +237,12 @@ export function VCVerification() {
     stopPolling();
 
     try {
+      console.log('[VCVerification] Calling API startVCVerification...');
       const response = await api.startVCVerification({ force: true });
+      console.log('[VCVerification] API response:', response);
+      
       if (response.error) {
+        console.error('[VCVerification] API returned error:', response.error);
         throw new Error(response.error);
       }
 
@@ -241,6 +263,7 @@ export function VCVerification() {
       }
 
     } catch (err) {
+      console.error('[VCVerification] Error in startVerification:', err);
       setError(err instanceof Error ? err.message : '啟動驗證失敗');
     } finally {
       setLoading(false);
@@ -248,11 +271,53 @@ export function VCVerification() {
   };
 
   const resetVerification = () => {
+    console.log('[VCVerification] Resetting verification...');
+    
+    // Force stop polling immediately
+    stopPolling();
+    
+    // Clear all state
+    setPollingEnabled(false);
     setVerification(null);
     setError(null);
-    setPollingEnabled(false);
     sessionStorage.removeItem('pendingVerificationTxId');
+    
+    console.log('[VCVerification] Reset completed');
+    
+    // Add a small delay to ensure state is updated before any new operations
+    setTimeout(() => {
+      console.log('[VCVerification] Reset state confirmed');
+    }, 100);
+  };
+
+  const regenerateQRCode = async () => {
+    console.log('[VCVerification] Regenerating QR Code...');
+    
+    // First reset everything
+    resetVerification();
+    
+    // Wait a moment for state to clear
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Then start new verification
+    await startVerification();
+  };
+
+  if (!user) {
     stopPolling();
+    
+    // Clear all state
+    setPollingEnabled(false);
+    setVerification(null);
+    setError(null);
+    sessionStorage.removeItem('pendingVerificationTxId');
+    
+    console.log('[VCVerification] Reset completed');
+    
+    // Add a small delay to ensure state is updated before any new operations
+    setTimeout(() => {
+      console.log('[VCVerification] Reset state confirmed');
+    }, 100);
   };
 
   if (!user) {
@@ -439,10 +504,11 @@ export function VCVerification() {
                 </p>
                 <div className="mt-3">
                   <button
-                    onClick={resetVerification}
-                    className="rounded bg-white px-3 py-1.5 text-sm text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
+                    onClick={regenerateQRCode}
+                    disabled={loading}
+                    className="rounded bg-white px-3 py-1.5 text-sm text-gray-700 ring-1 ring-inset ring-gray-200 hover:bg-gray-50 disabled:opacity-50"
                   >
-                    重新產生 QR Code
+                    {loading ? '產生中...' : '重新產生 QR Code'}
                   </button>
                 </div>
               </div>
@@ -467,9 +533,13 @@ export function VCVerification() {
                         <span className="font-medium">{getRankDisplayName(verification.extractedClaims.rank)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>DID:</span>
+                        <span>姓名:</span>
+                        <span className="font-medium">{verification.extractedClaims.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Email:</span>
                         <span className="font-mono text-[10px] break-all">
-                          {verification.extractedClaims.did}
+                          {verification.extractedClaims.email}
                         </span>
                       </div>
                     </div>

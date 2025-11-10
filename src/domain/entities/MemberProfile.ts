@@ -203,15 +203,10 @@ export class MemberProfile {
    * @param rank - Rank derived from the VC
    * @throws Error if member is already verified or parameters are invalid
    */
-  public verifyWithRankCard(did: string, rank: string): void {
+  public verifyWithRankCard(did: string | null, rank: string): void {
     // Invariant: Member must be in GENERAL status
     if (this.status !== MemberStatus.GENERAL) {
       throw new Error('Member is already verified');
-    }
-
-    // Invariant: DID cannot be empty
-    if (!did || did.trim() === '') {
-      throw new Error('DID cannot be empty');
     }
 
     // Invariant: Rank cannot be empty

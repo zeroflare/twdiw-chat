@@ -1,16 +1,11 @@
 /**
  * VC Verification Service
- * Implements RankVerificationService interface for twdiw API integration
+ * Handles Taiwan Wallet VC verification with optimized caching
  */
 
-import {
-  RankVerificationService,
-  VerificationRequest,
-  VerificationResult,
-  VerificationStatus
-} from '../../domain/services/RankVerificationService';
-import { Rank } from '../../domain/entities/MemberProfile';
+import { RankVerificationService, VerificationRequest, VerificationResult } from '../../domain/services/RankVerificationService';
 import { createLogSanitizer, LogLevel } from '../security/LogSanitizer';
+import { Rank } from '../../domain/value-objects/Rank';
 
 export interface TwdiwQRCodeResponse {
   transactionId: string;
@@ -18,25 +13,27 @@ export interface TwdiwQRCodeResponse {
   authUri: string;
 }
 
-export interface TwdiwCredentialClaim {
-  ename?: string;
-  cname?: string;
-  value?: string;
-}
-
 export interface TwdiwCredentialData {
-  credentialType?: string;
-  claims?: TwdiwCredentialClaim[];
+  credentialType: string;
+  claims?: Array<{
+    ename?: string;
+    cname?: string;
+    value?: any;
+  }>;
 }
 
 export interface TwdiwStatusResponse {
-  status?: 'pending' | 'completed' | 'failed' | 'expired'; // legacy
-  verifiablePresentation?: any; // legacy payload
+  status?: 'pending' | 'completed' | 'failed' | 'expired';
+  verifiablePresentation?: any;
   error?: string;
   verifyResult?: boolean;
   resultDescription?: string;
   transactionId?: string;
   data?: TwdiwCredentialData[];
+  claimSnapshot?: Array<{
+    credentialType: string;
+    claims: any[];
+  }>;
   errorCode?: string;
   message?: string;
 }
@@ -45,6 +42,17 @@ export class VCVerificationService implements RankVerificationService {
   private apiEndpoint: string;
   private apiToken: string;
   private ref: string;
+
+  // Cache for verification results to avoid repeated API calls
+  private static verificationCache = new Map<string, {
+    result: VerificationResult;
+    timestamp: number;
+    apiCallCount: number;
+  }>();
+
+  private static readonly CACHE_TTL = 10000; // Reduced to 10 seconds for faster detection
+  private static readonly MAX_API_CALLS = 30; // Increased max calls
+  private static readonly API_CALL_INTERVAL = 3000; // Reduced to 3 seconds between API calls
 
   constructor(env: any) {
     this.apiEndpoint = env.TWDIW_API_ENDPOINT || 'https://verifier-sandbox.wallet.gov.tw';
@@ -61,8 +69,7 @@ export class VCVerificationService implements RankVerificationService {
     if (globalCrypto && typeof globalCrypto.randomUUID === 'function') {
       return globalCrypto.randomUUID();
     }
-
-    // Fallback UUIDv4 implementation (RFC4122 compliant enough for sandbox)
+    
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -75,6 +82,9 @@ export class VCVerificationService implements RankVerificationService {
     try {
       const transactionId = this.generateTransactionId();
       console.log("[VCVerificationService] Generated transactionId:", transactionId);
+      
+      // Clear any existing cache for this transaction
+      VCVerificationService.verificationCache.delete(transactionId);
       
       const url = `${this.apiEndpoint}/api/oidvp/qrcode?ref=${encodeURIComponent(this.ref)}&transactionId=${encodeURIComponent(transactionId)}`;
       console.log("[VCVerificationService] Making fetch request to:", url);
@@ -105,18 +115,13 @@ export class VCVerificationService implements RankVerificationService {
 
       const result = {
         transactionId: data.transactionId,
-        status: VerificationStatus.PENDING,
+        qrCodeUrl: data.qrcodeImage,
         authUri: data.authUri,
-        qrCodeUrl: data.qrcodeImage // Map qrcodeImage to qrCodeUrl
+        status: 'pending' as const,
+        pollInterval: 3000
       };
-      
-      console.log("[VCVerificationService] Returning result:", { 
-        transactionId: result.transactionId, 
-        status: result.status, 
-        hasAuthUri: !!result.authUri, 
-        hasQrCodeUrl: !!result.qrCodeUrl 
-      });
-      
+
+      console.log("[VCVerificationService] Verification initiated successfully:", result);
       return result;
     } catch (error) {
       console.error('VC verification initiation failed:', error);
@@ -131,9 +136,65 @@ export class VCVerificationService implements RankVerificationService {
     }
   }
 
+  // Debug method to clear cache
+  static clearCache(transactionId?: string) {
+    if (transactionId) {
+      VCVerificationService.verificationCache.delete(transactionId);
+      console.log(`[VCVerificationService] Cleared cache for transaction: ${transactionId}`);
+    } else {
+      VCVerificationService.verificationCache.clear();
+      console.log(`[VCVerificationService] Cleared all cache`);
+    }
+  }
+
   async checkVerificationStatus(transactionId: string): Promise<VerificationResult> {
-    console.log("[VCVerificationService] Checking verification status", { transactionId, apiEndpoint: this.apiEndpoint });
+    console.log("[VCVerificationService] Checking verification status", { transactionId, apiEndpoint: this.apiEndpoint, ref: this.ref });
+    
+    const now = Date.now();
+    const cacheKey = `${transactionId}`;
+    const cached = VCVerificationService.verificationCache.get(cacheKey);
+
+    // Check if we have a recent cached result
+    if (cached) {
+      const age = now - cached.timestamp;
+      
+      // If result is completed or failed, return cached result (no need to check again)
+      if (cached.result.status === 'completed' || cached.result.status === 'failed') {
+        console.log("[VCVerificationService] Returning cached final result", { status: cached.result.status, age });
+        return cached.result;
+      }
+      
+      // If result is pending, check if we should make another API call
+      if (cached.result.status === 'pending') {
+        // If cache is still fresh, return cached pending result
+        if (age < VCVerificationService.CACHE_TTL) {
+          console.log("[VCVerificationService] Returning cached pending result", { age, ttl: VCVerificationService.CACHE_TTL });
+          return cached.result;
+        }
+        
+        // If we've made too many API calls, return cached result with extended message
+        if (cached.apiCallCount >= VCVerificationService.MAX_API_CALLS) {
+          console.log("[VCVerificationService] Max API calls reached, returning cached result", { apiCallCount: cached.apiCallCount });
+          return {
+            ...cached.result,
+            message: 'Verification timeout - please regenerate QR code if needed'
+          };
+        }
+        
+        // Check if enough time has passed since last API call
+        if (age < VCVerificationService.API_CALL_INTERVAL) {
+          console.log("[VCVerificationService] API call interval not reached", { age, interval: VCVerificationService.API_CALL_INTERVAL });
+          return cached.result;
+        }
+      }
+    }
+
     try {
+      // Make API call to Taiwan Wallet
+      console.log("[VCVerificationService] Making API call to Taiwan Wallet", { 
+        apiCallCount: cached ? cached.apiCallCount + 1 : 1 
+      });
+      
       const response = await fetch(`${this.apiEndpoint}/api/oidvp/result`, {
         method: 'POST',
         headers: {
@@ -144,301 +205,231 @@ export class VCVerificationService implements RankVerificationService {
         body: JSON.stringify({ transactionId })
       });
 
-      console.log("[VCVerificationService] Status check response", { status: response.status, statusText: response.statusText });
+      console.log("[VCVerificationService] Taiwan Wallet API response", { status: response.status, statusText: response.statusText });
+
+      let result: VerificationResult;
 
       if (response.status === 400) {
-        // 400 means user hasn't uploaded data yet (still pending)
-        return {
-          transactionId,
-          status: VerificationStatus.PENDING
-        };
-      }
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Status check failed: ${response.status} ${error}`);
-      }
-
-      const data: TwdiwStatusResponse = await response.json();
-
-      // Log sanitized response for security audit
-      const sanitizer = createLogSanitizer();
-      const logData = sanitizer.sanitize(LogLevel.INFO, '[VC verification] twdiw status response', {
-        transactionId,
-        status: data.status ?? (typeof data.verifyResult === 'boolean' ? (data.verifyResult ? 'completed' : 'failed') : 'unknown'),
-        verifyResult: data.verifyResult,
-        resultDescription: data.resultDescription,
-        errorCode: data.errorCode,
-        hasData: Array.isArray(data.data) && data.data.length > 0,
-        claimSnapshot: Array.isArray(data.data)
-          ? data.data.map(item => ({
-              credentialType: item.credentialType,
-              claims: item.claims?.map(claim => ({ ename: claim.ename, cname: claim.cname })) || []
-            }))
-          : null
-      });
-      if (logData.shouldLog) {
-        console.log(logData.message, logData.data);
-      }
-
-      // Legacy status field support
-      if (data.status) {
-        switch (data.status) {
-          case 'pending':
-            return {
+        const errorText = await response.text();
+        console.log("[VCVerificationService] 400 error details:", errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          const params = JSON.parse(errorData.params || '{}');
+          
+          if (params.code === 4002) {
+            result = {
+              status: 'pending',
               transactionId,
-              status: VerificationStatus.PENDING,
-              pollInterval: 5000
+              message: 'Verification pending - please complete the process in Taiwan Wallet'
             };
-
-          case 'completed': {
-            const claims = this.extractRankFromResponse(data, transactionId);
-            return {
+          } else {
+            result = {
+              status: 'pending',
               transactionId,
-              status: VerificationStatus.VERIFIED,
-              verifiableCredential: data.verifiablePresentation ?? data,
-              extractedClaims: claims
+              message: 'Verification still pending'
             };
           }
-
-          case 'failed':
-            return {
-              transactionId,
-              status: VerificationStatus.FAILED,
-              error: data.error || 'Verification failed'
-            };
-
-          case 'expired':
-            return {
-              transactionId,
-              status: VerificationStatus.EXPIRED,
-              error: 'Verification session expired'
-            };
-
-          default:
-            throw new Error(`Unknown verification status: ${data.status}`);
-        }
-      }
-
-      if (typeof data.verifyResult === 'boolean') {
-        if (data.verifyResult) {
-          const claims = this.extractRankFromResponse(data, transactionId);
-          return {
-            transactionId: data.transactionId || transactionId,
-            status: VerificationStatus.VERIFIED,
-            verifiableCredential: data.verifiablePresentation ?? data,
-            extractedClaims: claims
+        } catch (parseError) {
+          console.log("[VCVerificationService] Could not parse error details:", parseError);
+          result = {
+            status: 'pending',
+            transactionId,
+            message: 'Verification still pending'
           };
         }
-
-        const description = (data.resultDescription || data.message || '').toLowerCase();
-        const isExpired = description.includes('expired') || data.errorCode === 'expired';
-
-        return {
-          transactionId: data.transactionId || transactionId,
-          status: isExpired ? VerificationStatus.EXPIRED : VerificationStatus.FAILED,
-          error: data.resultDescription || data.message || (isExpired ? 'Verification session expired' : 'Verification failed')
+      } else if (!response.ok) {
+        const error = await response.text();
+        result = {
+          status: 'failed',
+          transactionId,
+          error: `API error: ${response.status} ${error}`
         };
+      } else {
+        // Parse successful response
+        const data: TwdiwStatusResponse = await response.json();
+        console.log("[VCVerificationService] Raw API response:", JSON.stringify(data, null, 2));
+        console.log("[VCVerificationService] Response analysis:", {
+          hasVerifyResult: 'verifyResult' in data,
+          verifyResultValue: data.verifyResult,
+          verifyResultType: typeof data.verifyResult,
+          hasData: !!data.data,
+          dataIsArray: Array.isArray(data.data),
+          dataLength: Array.isArray(data.data) ? data.data.length : 0,
+          hasClaimSnapshot: !!data.claimSnapshot,
+          claimSnapshotLength: Array.isArray(data.claimSnapshot) ? data.claimSnapshot.length : 0,
+          resultDescription: data.resultDescription,
+          status: data.status
+        });
+
+        if (data.verifyResult === true) {
+          if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+            const claims = this.extractRankFromCredentialData(data.data, transactionId);
+            if (claims) {
+              result = {
+                status: 'completed',
+                transactionId,
+                extractedClaims: {
+                  rank: claims.rank,
+                  email: claims.email,
+                  name: claims.name
+                }
+              };
+            } else {
+              result = {
+                status: 'completed',
+                transactionId,
+                message: 'Verification completed but no rank information found'
+              };
+            }
+          } else {
+            result = {
+              status: 'completed',
+              transactionId,
+              message: 'Verification completed but no data received'
+            };
+          }
+        } else if (data.verifyResult === false) {
+          result = {
+            status: 'failed',
+            transactionId,
+            error: data.resultDescription || 'Verification failed'
+          };
+        } else {
+          result = {
+            status: 'pending',
+            transactionId,
+            message: 'Verification still in progress'
+          };
+        }
       }
 
-      throw new Error(`Unknown verification status: ${JSON.stringify(data)}`);
+      // Update cache
+      VCVerificationService.verificationCache.set(cacheKey, {
+        result,
+        timestamp: now,
+        apiCallCount: cached ? cached.apiCallCount + 1 : 1
+      });
+
+      // Clean up old cache entries (older than 10 minutes)
+      const cutoff = now - 600000;
+      for (const [key, value] of VCVerificationService.verificationCache.entries()) {
+        if (value.timestamp < cutoff) {
+          VCVerificationService.verificationCache.delete(key);
+        }
+      }
+
+      return result;
+
     } catch (error) {
       console.error('VC verification status check failed:', error);
+      
+      // Return cached result if available, otherwise throw error
+      if (cached) {
+        console.log("[VCVerificationService] API call failed, returning cached result");
+        return cached.result;
+      }
+      
       throw new Error('Failed to check verification status');
     }
   }
 
-  private extractRankFromResponse(response: TwdiwStatusResponse, fallbackTransactionId: string): { did: string; rank: string } {
-    const sanitizer = createLogSanitizer();
-
-    // Prioritize data[] format (current API format)
-    if (response.data) {
-      const extractLog = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] extracting claims from data[]', {
-        transactionId: fallbackTransactionId,
-        dataCount: Array.isArray(response.data) ? response.data.length : 1
-      });
-      if (extractLog.shouldLog) {
-        console.log(extractLog.message, extractLog.data);
-      }
-
-      const fromData = this.extractRankFromCredentialData(response.data, fallbackTransactionId);
-      if (fromData) {
-        const extractedLog = sanitizer.sanitize(LogLevel.INFO, '[VC verification] extracted claims from data[]', {
-          did: fromData.did,
-          rank: fromData.rank
-        });
-        if (extractedLog.shouldLog) {
-          console.log(extractedLog.message, extractedLog.data);
-        }
-        return fromData;
-      }
-    }
-
-    // Fallback to legacy verifiablePresentation format
-    if (response.verifiablePresentation) {
-      return this.extractRankFromPresentation(response.verifiablePresentation);
-    }
-
-    const errorLog = sanitizer.sanitize(LogLevel.ERROR, 'Unable to extract rank from twdiw response', {
-      hasPresentation: Boolean(response.verifiablePresentation),
-      hasData: Boolean(response.data),
-      credentialTypes: this.describeCredentialTypes(response.data)
+  private extractRankFromCredentialData(data: TwdiwCredentialData[], transactionId: string): { rank: string; email: string; name: string } | null {
+    console.log('[DEBUG] extractRankFromCredentialData input:', {
+      credentialsCount: data.length,
+      credentials: data.map(c => ({
+        credentialType: c.credentialType,
+        claimsCount: c.claims?.length || 0
+      }))
     });
-    if (errorLog.shouldLog) {
-      console.error(errorLog.message, errorLog.data);
-    }
-    throw new Error('Unable to extract rank from verification response');
-  }
 
-  private describeCredentialTypes(data?: TwdiwCredentialData[] | TwdiwCredentialData | null) {
-    const list = this.normalizeCredentialData(data);
-    return list.map(item => ({
-      credentialType: item.credentialType,
-      claimNames: item.claims?.map(claim => claim.ename || claim.cname) || []
-    }));
-  }
+    // Collect all claims from all credentials
+    let rankClaim: any = null;
+    let emailClaim: any = null;
+    let nameClaim: any = null;
 
-  private normalizeCredentialData(data?: TwdiwCredentialData[] | TwdiwCredentialData | null): TwdiwCredentialData[] {
-    if (Array.isArray(data)) {
-      return data;
-    }
-    if (data && typeof data === 'object') {
-      return [data];
-    }
-    return [];
-  }
-
-  private extractRankFromCredentialData(data?: TwdiwCredentialData[] | TwdiwCredentialData | null, fallbackTransactionId?: string): { did: string; rank: string } | null {
-    const credentials = this.normalizeCredentialData(data);
-    if (!credentials.length) {
-      return null;
-    }
-
-    for (const credential of credentials) {
+    for (const credential of data) {
       if (!credential.claims?.length) continue;
 
       const claims = credential.claims;
-
-      const didClaim = claims.find((claim) => (claim.value?.startsWith('did:')) ||
-        claim.ename?.toLowerCase() === 'did' ||
-        claim.ename?.toLowerCase() === 'holderdid' ||
-        claim.cname?.includes('DID'));
-
-      const rankClaim = claims.find((claim) => {
-        const name = claim.ename?.toLowerCase() || '';
-        const cname = claim.cname || '';
-        return name.includes('rank') ||
-          name.includes('level') ||
-          name.includes('class') ||
-          cname.includes('等級') ||
-          cname.includes('階級') ||
-          cname.includes('卡別');
+      console.log('[DEBUG] Processing credential:', {
+        type: credential.credentialType,
+        claimsCount: claims.length,
+        claimNames: claims.map(c => ({ ename: c.ename, cname: c.cname }))
       });
 
-      if (rankClaim?.value) {
-        const didValue = didClaim?.value || (fallbackTransactionId ? `did:twdiw:${fallbackTransactionId}` : undefined);
-        if (!didValue) {
-          continue;
-        }
-        return {
-          did: didValue,
-          rank: this.normalizeRank(rankClaim.value)
-        };
+      // Find rank claim
+      if (!rankClaim) {
+        rankClaim = claims.find((claim) => {
+          const name = claim.ename?.toLowerCase() || "";
+          const cname = claim.cname || "";
+          return name.includes("rank") ||
+            name.includes("level") ||
+            name.includes("class") ||
+            cname.includes("等級") ||
+            cname.includes("階級") ||
+            cname.includes("卡別");
+        });
+      }
+
+      // Find email claim
+      if (!emailClaim) {
+        emailClaim = claims.find((claim) => {
+          const name = claim.ename?.toLowerCase() || "";
+          const cname = claim.cname || "";
+          return name.includes("email") ||
+                 name.includes("mail") ||
+                 cname.includes("電子信箱") ||
+                 cname.includes("信箱");
+        });
+      }
+
+      // Find name claim
+      if (!nameClaim) {
+        nameClaim = claims.find((claim) => {
+          const name = claim.ename?.toLowerCase() || "";
+          const cname = claim.cname || "";
+          return name.includes("name") ||
+                 cname.includes("姓名") ||
+                 cname.includes("名稱");
+        });
       }
     }
 
+    console.log('[DEBUG] Claims found:', {
+      hasRank: !!rankClaim?.value,
+      hasEmail: !!emailClaim?.value,
+      hasName: !!nameClaim?.value,
+      rankValue: rankClaim?.value,
+      emailValue: emailClaim?.value,
+      nameValue: nameClaim?.value
+    });
+
+    // Check if we have all required claims
+    if (rankClaim?.value && emailClaim?.value && nameClaim?.value) {
+      const result = {
+        rank: this.normalizeRank(rankClaim.value),
+        email: emailClaim.value,
+        name: nameClaim.value
+      };
+      
+      console.log('[DEBUG] Successfully extracted claims:', result);
+      return result;
+    }
+
+    console.log('[DEBUG] Missing required claims - unable to extract');
     return null;
   }
 
-  private extractRankFromPresentation(verifiablePresentation: any): { did: string; rank: string } {
-    try {
-      // Navigate through VP structure to find VC
-      const vp = verifiablePresentation;
-      if (!vp.verifiableCredential || !Array.isArray(vp.verifiableCredential)) {
-        throw new Error('Invalid VP structure: missing verifiableCredential array');
-      }
-
-      // Find rank card VC
-      const rankVC = vp.verifiableCredential.find((vc: any) => 
-        vc.type?.includes('RankCard') || 
-        vc.credentialSubject?.type === 'RankCard'
-      );
-
-      if (!rankVC) {
-        throw new Error('Rank card VC not found in presentation');
-      }
-
-      // Extract DID and rank
-      const credentialSubject = rankVC.credentialSubject;
-      if (!credentialSubject) {
-        throw new Error('Missing credentialSubject in rank VC');
-      }
-
-      const did = credentialSubject.id;
-      const rank = credentialSubject.rank || credentialSubject.level;
-
-      if (!did) {
-        throw new Error('Missing DID in credential subject');
-      }
-
-      if (!rank) {
-        throw new Error('Missing rank in credential subject');
-      }
-
-      // Normalize rank values
-      const normalizedRank = this.normalizeRank(rank);
-
-      return { did, rank: normalizedRank };
-    } catch (error) {
-      console.error('Failed to extract rank from VC claims:', error);
-      throw new Error(`Invalid VC structure: ${error.message}`);
-    }
-  }
-
   private normalizeRank(rank: string): string {
-    const rankStr = rank.toString().toLowerCase();
-
-    const aliasMap: Record<string, Rank> = {
-      gold: Rank.EARTH_OL_GRADUATE,
-      '地球ol財富畢業證書': Rank.EARTH_OL_GRADUATE,
-      '地球ol財富畢業證書持有者': Rank.EARTH_OL_GRADUATE,
-      'earth_ol_graduate': Rank.EARTH_OL_GRADUATE,
-      '金卡': Rank.EARTH_OL_GRADUATE,
-      '人生勝利組': Rank.LIFE_WINNER_S,
-      '人生勝利組s級玩家卡': Rank.LIFE_WINNER_S,
-      silver: Rank.LIFE_WINNER_S,
-      '尊爵不凡．小資族認證': Rank.DISTINGUISHED_PETTY,
-      '尊爵不凡': Rank.DISTINGUISHED_PETTY,
-      '小資族認證': Rank.DISTINGUISHED_PETTY,
-      '準富豪vip登錄證': Rank.QUASI_WEALTHY_VIP,
-      '準富豪': Rank.QUASI_WEALTHY_VIP,
-      'vip登錄證': Rank.QUASI_WEALTHY_VIP,
-      '新手村榮譽村民證': Rank.NEWBIE_VILLAGE,
-      '新手村榮譽村民證持有者': Rank.NEWBIE_VILLAGE,
-      '新手村': Rank.NEWBIE_VILLAGE,
-      bronze: Rank.NEWBIE_VILLAGE
+    const rankMap: Record<string, string> = {
+      '地球OL財富畢業證書持有者': 'EARTH_OL_GRADUATE',
+      '人生勝利組S級玩家': 'LIFE_WINNER_S',
+      '準富豪VIP登錄證': 'QUASI_WEALTHY_VIP',
+      '尊爵不凡．小資族認證': 'DISTINGUISHED_PETTY',
+      '新手村榮譽村民證': 'NEWBIE_VILLAGE'
     };
-
-    for (const [alias, mappedRank] of Object.entries(aliasMap)) {
-      if (rankStr.includes(alias)) {
-        return mappedRank;
-      }
-    }
-
-    switch (rankStr) {
-      case '1':
-        return Rank.EARTH_OL_GRADUATE;
-      case '2':
-        return Rank.LIFE_WINNER_S;
-      case '3':
-        return Rank.QUASI_WEALTHY_VIP;
-      case '4':
-        return Rank.DISTINGUISHED_PETTY;
-      case '5':
-        return Rank.NEWBIE_VILLAGE;
-      default:
-        console.error('Unknown rank value received from twdiw', { raw: rank });
-        throw new Error(`Unknown rank value: ${rank}`);
-    }
+    
+    return rankMap[rank] || rank;
   }
 }

@@ -1,0 +1,39 @@
+# Local Development Environment Variables Template
+# Copy this file to .dev.vars and fill in your actual values
+
+# Development Mode
+NODE_ENV=development
+DEV_MODE=true
+
+# Authentication Mode (set to false to test real OIDC)
+MOCK_AUTH=false
+
+# JWT Secret (for local testing)
+JWT_SECRET=dev-jwt-secret-key-for-local-testing-only
+
+# Encryption Key (256-bit base64 encoded)
+ENCRYPTION_KEY=your-256-bit-base64-encryption-key
+
+# OIDC Configuration (same as production)
+OIDC_ISSUER_URL=https://twdiw-sso.zeroflare.tw
+OIDC_CLIENT_ID=your-oidc-client-id
+OIDC_CLIENT_SECRET=your-oidc-client-secret
+OIDC_REDIRECT_URI=http://localhost:8787/api/auth/callback
+
+# External API Configuration
+TWDIW_API_ENDPOINT=https://verifier-sandbox.wallet.gov.tw
+TWDIW_API_TOKEN=your-twdiw-api-token
+TWDIW_REF=0052696330_vc_asset_player_rank_certificate
+
+# Taiwan Wallet API
+TAIWAN_WALLET_API_TOKEN=your-taiwan-wallet-api-token
+
+# tlk.io Configuration
+TLKIO_BASE_URL=https://tlk.io
+TLKIO_THEME=theme--minimal
+
+# Admin Token (for local testing)
+ADMIN_TOKEN=local-admin-token
+
+# Cookie Signing (optional, auto-generated if not set)
+COOKIE_SIGNING_KEY=your-cookie-signing-key

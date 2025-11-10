@@ -6,7 +6,7 @@ import { UserProfile } from './components/auth/UserProfile';
 import { UserSetup } from './components/auth/UserSetup';
 import { VCVerification } from './components/vc/VCVerification';
 import { ForumList } from './components/forum/ForumList';
-import { DevLogin } from './components/auth/DevLogin';
+import { DevPanel } from './components/dev/DevPanel';
 import { DailyMatching } from './components/matching/DailyMatching';
 import { ChatSession } from './components/chat/ChatSession';
 import { api } from './services/api';
@@ -132,8 +132,8 @@ function AppContent() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Development Mode Login */}
-        {api.isDevMode && !user && <DevLogin />}
+        {/* Development Mode Panel */}
+        {api.isDevMode && !user && <DevPanel />}
         
         {!user ? (
           // Landing page for non-authenticated users

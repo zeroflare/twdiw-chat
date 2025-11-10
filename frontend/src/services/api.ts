@@ -32,8 +32,9 @@ export interface VerificationResult {
   status: 'pending' | 'completed' | 'failed' | 'expired' | 'PENDING' | 'COMPLETED' | 'FAILED' | 'EXPIRED';
   pollInterval?: number;
   extractedClaims?: {
-    did: string;
     rank: string;
+    email: string;
+    name: string;
   };
   error?: string;
 }
@@ -46,7 +47,9 @@ export interface MockUser {
 }
 
 class ApiService {
-  private baseUrl = 'https://twdiw-chat.twdiw-chat-api.workers.dev/api'; // Always use cloud backend
+  // Use relative path for same-domain deployment (Workers + Assets)
+  // No CORS needed when frontend and backend are served from the same domain
+  private baseUrl = '/api';
   private isDev = import.meta.env.DEV || window.location.hostname === 'localhost';
 
   private async request<T>(
@@ -142,13 +145,13 @@ class ApiService {
   // VC Verification
   async startVCVerification(options?: { force?: boolean }) {
     const query = options?.force ? '?force=true' : '';
-    return this.request<VerificationResult>(`/vc/verify/start${query}`, {
+    return this.request<VerificationResult>(`/vc/start${query}`, {
       method: 'POST',
     });
   }
 
   async pollVCVerification(transactionId: string) {
-    return this.request<VerificationResult>(`/vc/verify/poll/${transactionId}`);
+    return this.request<VerificationResult>(`/vc/poll/${transactionId}`);
   }
 
   // Development: Mock VC verification

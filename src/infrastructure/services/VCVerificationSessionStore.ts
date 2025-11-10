@@ -10,8 +10,12 @@ export interface VCVerificationSession {
   qrCodeUrl?: string;
   authUri?: string;
   verifiableCredential?: any;
-  extractedDid?: string;
+  extractedDid?: string; // Legacy field
+  extractedEmail?: string;
+  extractedName?: string;
   extractedRank?: string;
+  extractedEmail?: string;
+  extractedName?: string;
   error?: string;
   createdAt: number;
   expiresAt: number;
@@ -67,6 +71,16 @@ export class VCVerificationSessionStore {
     }
 
     if (updates.extractedRank !== undefined) {
+
+    if (updates.extractedEmail !== undefined) {
+      fields.push('extracted_email = ?');
+      values.push(updates.extractedEmail);
+    }
+
+    if (updates.extractedName !== undefined) {
+      fields.push('extracted_name = ?');
+      values.push(updates.extractedName);
+    }
       fields.push('extracted_rank = ?');
       values.push(updates.extractedRank);
     }
@@ -118,6 +132,8 @@ export class VCVerificationSessionStore {
         : undefined,
       extractedDid: result.extracted_did as string || undefined,
       extractedRank: result.extracted_rank as string || undefined,
+      extractedEmail: result.extracted_email as string || undefined,
+      extractedName: result.extracted_name as string || undefined,
       error: result.error as string || undefined,
       createdAt: result.created_at as number,
       expiresAt: result.expires_at as number,
@@ -148,6 +164,8 @@ export class VCVerificationSessionStore {
         : undefined,
       extractedDid: result.extracted_did as string || undefined,
       extractedRank: result.extracted_rank as string || undefined,
+      extractedEmail: result.extracted_email as string || undefined,
+      extractedName: result.extracted_name as string || undefined,
       error: result.error as string || undefined,
       createdAt: result.created_at as number,
       expiresAt: result.expires_at as number,

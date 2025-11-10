@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { deleteCookie } from 'hono/cookie';
 import { OIDCService } from '../infrastructure/auth/OIDCService';
 import { JWTService } from '../infrastructure/auth/JWTService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
@@ -100,13 +101,13 @@ app.get('/callback', async (c) => {
     }
 
     if (error) {
-      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
-      return c.redirect(`${frontendUrl}/?auth=error&type=oidc_error`);
+      // Single deployment - redirect to same origin
+      return c.redirect(`/?auth=error&type=oidc_error`);
     }
 
     if (!code || !state) {
-      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
-      return c.redirect(`${frontendUrl}/?auth=error&type=missing_params`);
+      // Single deployment - redirect to same origin
+      return c.redirect(`/?auth=error&type=missing_params`);
     }
 
     // Retrieve stored PKCE data from KV using URL state parameter
@@ -130,8 +131,8 @@ app.get('/callback', async (c) => {
     console.log('Stored OIDC data:', { hasStoredData: !!storedData });
 
     if (!storedData) {
-      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
-      return c.redirect(`${frontendUrl}/?auth=error&type=missing_state`);
+      // Single deployment - redirect to same origin
+      return c.redirect(`/?auth=error&type=missing_state`);
     }
 
     // Parse stored OIDC state data
@@ -140,8 +141,8 @@ app.get('/callback', async (c) => {
       parsedData = JSON.parse(storedData);
     } catch (parseError) {
       console.error('Failed to parse OIDC state:', parseError);
-      const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
-      return c.redirect(`${frontendUrl}/?auth=error&type=invalid_state_data`);
+      // Single deployment - redirect to same origin
+      return c.redirect(`/?auth=error&type=invalid_state_data`);
     }
 
     const { state: storedState, codeVerifier } = parsedData;
@@ -233,14 +234,14 @@ app.get('/callback', async (c) => {
     });
 
     // Return JWT token to frontend via URL redirect
-    const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
-    return c.redirect(`${frontendUrl}/?auth=success&token=${sessionToken}`);
+    // Single deployment - redirect to same origin
+    return c.redirect(`/?auth=success&token=${sessionToken}`);
 
   } catch (error) {
     console.error('OIDC callback failed:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    const frontendUrl = c.env.FRONTEND_URL || 'https://twdiw-chat-app.pages.dev';
-    return c.redirect(`${frontendUrl}/?auth=error&type=auth_failed`);
+    // Single deployment - redirect to same origin
+    return c.redirect(`/?auth=error&type=auth_failed`);
   }
 });
 

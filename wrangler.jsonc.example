@@ -1,45 +1,89 @@
+/**
+ * TWDIW Chat - Cloudflare Workers Configuration Template
+ * Copy this file to wrangler.jsonc and fill in your actual values
+ * For more details: https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
 {
-  // Wrangler Configuration Template (JSON with Comments)
-  // Copy this file to wrangler.jsonc and fill in your actual values
-  
-  "name": "twdiw-chat",
-  "main": "src/index.ts",
-  "compatibility_date": "2024-10-31",
-  "compatibility_flags": ["nodejs_compat"],
-  
-  // Environment variables (public)
-  "vars": {
-    "TWDIW_API_URL": "https://verifier-sandbox.wallet.gov.tw",
-    "TWDIW_API_TOKEN": "YOUR_TWDIW_API_TOKEN",
-    "OIDC_ISSUER_URL": "https://twdiw-sso.zeroflare.tw",
-    "OIDC_REDIRECT_URI": "https://your-domain.workers.dev/api/auth/callback",
-    "TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw/api",
-    "TWDIW_REF": "twdiw-chat",
-    "TLKIO_BASE_URL": "https://tlk.io",
-    "TLKIO_THEME": "theme--minimal"
-  },
-  
-  // Secrets (set with: wrangler secret put <NAME>)
-  // "OIDC_CLIENT_ID": "your-client-id",
-  // "OIDC_CLIENT_SECRET": "your-client-secret", 
-  // "JWT_SECRET": "your-jwt-secret",
-  // "ENCRYPTION_KEY": "your-encryption-key",
-  // "ADMIN_TOKEN": "your-admin-token",
-  
-  // D1 Database binding
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "twdiw-chat-db",
-      "database_id": "your-database-id"
-    }
-  ]
-  
-  // R2 Storage binding (if needed)
-  // "r2_buckets": [
-  //   {
-  //     "binding": "BUCKET", 
-  //     "bucket_name": "twdiw-chat-storage"
-  //   }
-  // ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "twdiw-chat",
+	"main": "src/index.ts",
+	"account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+	"compatibility_date": "2024-11-01",
+	"compatibility_flags": ["nodejs_compat"],
+
+	// Workers + Assets monolithic deployment
+	"assets": {
+		"directory": "public",
+		"binding": "ASSETS",
+		"html_handling": "auto-trailing-slash",
+		"not_found_handling": "single-page-application"
+	},
+
+	"observability": {
+		"enabled": true
+	},
+	
+	// KV namespace for session storage
+	"kv_namespaces": [
+		{
+			"binding": "twdiw_chat_session",
+			"id": "YOUR_KV_NAMESPACE_ID"
+		}
+	],
+	
+	// D1 database for structured data
+	"d1_databases": [
+		{
+			"binding": "twdiw_chat_db",
+			"database_name": "twdiw-chat-db",
+			"database_id": "YOUR_D1_DATABASE_ID",
+			"migrations_dir": "migrations"
+		}
+	],
+	
+	// Cron triggers for scheduled tasks
+	"triggers": {
+		"crons": ["*/5 * * * *"]
+	},
+	
+	// Public environment variables
+	"vars": {
+		"OIDC_ISSUER_URL": "https://twdiw-sso.zeroflare.tw",
+		"OIDC_REDIRECT_URI": "https://your-domain.workers.dev/api/auth/callback",
+		"TWDIW_API_ENDPOINT": "https://verifier-sandbox.wallet.gov.tw",
+		"TWDIW_REF": "0052696330_vc_asset_player_rank_certificate",
+		"TLKIO_BASE_URL": "https://tlk.io",
+		"TLKIO_THEME": "theme--minimal"
+	}
+	
+	/**
+	 * Secrets (managed via wrangler secret put <NAME>):
+	 * 
+	 * Required for authentication:
+	 * - JWT_SECRET: JWT signing key (256-bit recommended)
+	 * - OIDC_CLIENT_ID: OIDC client identifier
+	 * - OIDC_CLIENT_SECRET: OIDC client secret
+	 * 
+	 * Required for data encryption:
+	 * - ENCRYPTION_KEY: AES-256-GCM encryption key for PII data
+	 * 
+	 * Required for external APIs:
+	 * - TAIWAN_WALLET_API_TOKEN: Taiwan Wallet verifier API token
+	 * - TWDIW_API_TOKEN: TWDIW API token
+	 * 
+	 * Required for admin access:
+	 * - ADMIN_TOKEN: Admin access token
+	 * 
+	 * Optional for development:
+	 * - COOKIE_SIGNING_KEY: HMAC key for cookie integrity (auto-generated if not set)
+	 * 
+	 * Setup commands:
+	 * wrangler secret put JWT_SECRET
+	 * wrangler secret put ENCRYPTION_KEY
+	 * wrangler secret put OIDC_CLIENT_ID
+	 * wrangler secret put OIDC_CLIENT_SECRET
+	 * wrangler secret put TAIWAN_WALLET_API_TOKEN
+	 * wrangler secret put TWDIW_API_TOKEN
+	 * wrangler secret put ADMIN_TOKEN
+	 */
 }

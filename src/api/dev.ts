@@ -10,7 +10,6 @@ import { setCookie } from 'hono/cookie';
 import { MockAuthService } from '../infrastructure/auth/MockAuthService';
 import { D1MemberProfileRepository } from '../infrastructure/repositories/D1MemberProfileRepository';
 import { EncryptionService } from '../infrastructure/security/EncryptionService';
-import { MemberProfile } from '../domain/entities/MemberProfile';
 
 const app = new Hono();
 
@@ -111,50 +110,6 @@ app.post('/login/:userId', async (c) => {
   } catch (error) {
     console.error('Mock login failed:', error);
     return c.json({ error: 'Mock login failed' }, 500);
-  }
-});
-
-// POST /api/dev/create-test-user - Create test user for VC verification
-app.post('/create-test-user', async (c) => {
-  try {
-    const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
-    
-    // Check if user already exists
-    try {
-      const existing = await memberRepo.findByOidcSubjectId('testuser@example.com');
-      if (existing) {
-        return c.json({ message: 'Test user already exists', user: existing });
-      }
-    } catch (error) {
-      // User doesn't exist, continue to create
-    }
-    
-    // Create new test user
-    const encryptedGender = await EncryptedPersonalInfo.create('Male', encryptionService);
-    const encryptedInterests = await EncryptedPersonalInfo.create('測試興趣', encryptionService);
-    
-    const member = MemberProfile.create(
-      'testuser@example.com',
-      'Test User Need VC',
-      encryptedGender,
-      encryptedInterests
-    );
-    
-    await memberRepo.save(member);
-    
-    return c.json({ 
-      message: 'Test user created successfully',
-      user: {
-        id: member.getId(),
-        oidcSubjectId: 'testuser@example.com',
-        nickname: '測試用戶',
-        status: member.getStatus()
-      }
-    });
-  } catch (error) {
-    console.error('Failed to create test user:', error);
-    return c.json({ error: error instanceof Error ? error.message : 'Failed to create test user' }, 500);
   }
 });
 
@@ -270,3 +225,55 @@ app.post('/vc/complete/:transactionId', async (c) => {
 });
 
 export default app;
+
+// POST /api/dev/create-test-user - Create test user with proper encryption
+app.post('/create-test-user', async (c) => {
+  try {
+    const { email, name, nickname } = await c.req.json();
+    console.log('[create-test-user] Received data:', { email, name, nickname });
+    
+    if (!email || !name || !nickname) {
+      return c.json({ error: 'email, name, and nickname are required' }, 400);
+    }
+
+    const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+    const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
+    
+    // Check if user already exists
+    const existingMember = await memberRepo.findByOidcSubjectId(email);
+    if (existingMember) {
+      return c.json({ 
+        message: 'User already exists',
+        userId: existingMember.getId(),
+        email: email,
+        nickname: existingMember.getNickname()
+      });
+    }
+
+    // Generate unique user ID
+    const userId = `test-user-${Date.now()}`;
+    
+    // Create member profile with proper encryption
+    const member = MemberProfile.create({
+      oidcSubjectId: email,
+      nickname: nickname,
+      gender: null,
+      interests: null
+    });
+
+    await memberRepo.save(member);
+
+    return c.json({
+      message: 'Test user created successfully',
+      userId: userId,
+      email: email,
+      nickname: nickname,
+      name: name,
+      status: 'GENERAL'
+    });
+
+  } catch (error) {
+    console.error('Create test user failed:', error);
+    return c.json({ error: 'Failed to create test user' }, 500);
+  }
+});

@@ -173,13 +173,31 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
         console.log(logData.message, logData.data);
       }
 
+      // If completed, ensure user status is updated
+      if (session.status === 'completed' && session.extractedDid && session.extractedRank) {
+        try {
+          const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+          const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
+          const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
+          
+          if (member && member.status !== 'VERIFIED') {
+            member.verifyWithRankCard(session.extractedDid, session.extractedRank as any);
+            await memberRepo.save(member);
+            console.log('[VC verification] Updated member status to VERIFIED', { memberId: member.id });
+          }
+        } catch (error) {
+          console.error('[VC verification] Failed to update member status:', error);
+        }
+      }
+
       return c.json({
         transactionId,
         status: session.status,
         error: session.error,
         extractedClaims: session.extractedDid && session.extractedRank ? {
-          did: session.extractedDid,
-          rank: session.extractedRank
+          rank: session.extractedRank,
+          email: session.extractedEmail || "unknown",
+          name: session.extractedName || "unknown"
         } : undefined
       });
     }
@@ -191,8 +209,9 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
         status: session.status,
         error: session.error,
         extractedClaims: session.extractedDid && session.extractedRank ? {
-          did: session.extractedDid,
-          rank: session.extractedRank
+          rank: session.extractedRank,
+          email: session.extractedEmail || "unknown",
+          name: session.extractedName || "unknown"
         } : undefined
       });
     }
@@ -214,8 +233,9 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
           status: 'completed' as const,
           verifiableCredential: { mock: true },
           extractedClaims: {
-            did: mockDid,
-            rank: randomRank
+            rank: randomRank,
+            email: user.oidcSubjectId,
+            name: "Mock User"
           }
         };
 
@@ -233,7 +253,8 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
         await sessionStore.updateSession(transactionId, {
           status: 'completed',
           verifiableCredential: result.verifiableCredential,
-          extractedDid: result.extractedClaims.did,
+          extractedEmail: result.extractedClaims.email,
+        extractedName: result.extractedClaims.name,
           extractedRank: result.extractedClaims.rank,
           completedAt: Date.now()
         });
@@ -278,7 +299,18 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
     }
 
     // Update session based on result
-    if (result.status === 'VERIFIED' && result.extractedClaims) {
+    if (result.status === 'completed' && result.extractedClaims) {
+      // 驗證 email 是否與 SSO 註冊相符
+      const { rank, email, name } = result.extractedClaims;
+      if (email !== user.oidcSubjectId) {
+        return c.json({
+          error: 'Email verification failed',
+          message: '階級卡中的電子信箱與註冊信箱不符',
+          expected: user.oidcSubjectId,
+          received: email
+        }, 400);
+      }
+
       const updateLogData = sanitizer.sanitize(LogLevel.INFO, '[VC verification] starting member profile update', {
         transactionId,
         extractedClaims: result.extractedClaims,
@@ -288,92 +320,36 @@ app.get('/poll/:transactionId', authMiddleware(), async (c) => {
         console.log(updateLogData.message, updateLogData.data);
       }
 
-      // Update member profile
-      const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
-      const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
-      
-      console.log('[VC verification] repository created, finding member');
-      const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
-
-      const memberLookupLog = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] member lookup result', {
-        found: !!member,
-        memberId: member?.getId(),
-        memberStatus: member?.getStatus()
-      });
-      if (memberLookupLog.shouldLog) {
-        console.log(memberLookupLog.message, memberLookupLog.data);
-      }
-
-      if (member) {
-        const applyRankLog = sanitizer.sanitize(LogLevel.INFO, '[VC verification] applying rank to member', {
-          memberId: member.getId(),
-          rank: result.extractedClaims.rank,
-          did: result.extractedClaims.did
-        });
-        if (applyRankLog.shouldLog) {
-          console.log(applyRankLog.message, applyRankLog.data);
-        }
-
-        try {
-          const beforeVerifyLog = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] member before verification', {
-            memberId: member.getId(),
-            currentStatus: member.getStatus(),
-            currentRank: member.getDerivedRank(),
-            currentLinkedDid: member.getLinkedVcDid()
-          });
-          if (beforeVerifyLog.shouldLog) {
-            console.log(beforeVerifyLog.message, beforeVerifyLog.data);
-          }
-
-          member.verifyWithRankCard(
-            result.extractedClaims.did, 
-            result.extractedClaims.rank as any
-          );
-
-          const afterVerifyLog = sanitizer.sanitize(LogLevel.DEBUG, '[VC verification] member after verifyWithRankCard', {
-            memberId: member.getId(),
-            newStatus: member.getStatus(),
-            newRank: member.getDerivedRank(),
-            newLinkedDid: member.getLinkedVcDid()
-          });
-          if (afterVerifyLog.shouldLog) {
-            console.log(afterVerifyLog.message, afterVerifyLog.data);
-          }
-
+      // Update member profile to VERIFIED status
+      try {
+        const encryptionService = new EncryptionService(c.env.ENCRYPTION_KEY);
+        const memberRepo = new D1MemberProfileRepository(c.env.twdiw_chat_db, encryptionService);
+        const member = await memberRepo.findByOidcSubjectId(user.oidcSubjectId);
+        
+        if (member) {
+          // Taiwan Wallet VP API doesn't provide holder DID, use null
+          member.verifyWithRankCard(null, rank);
           await memberRepo.save(member);
-
-          sanitizer.securityAudit('VC_VERIFICATION_SUCCESS', {
-            memberId: member.getId(),
-            finalStatus: member.getStatus(),
-            finalRank: member.getDerivedRank(),
-            transactionId
+          
+          console.log('[VC verification] Member status updated to VERIFIED', { 
+            memberId: member.id, 
+            rank: rank,
+            status: member.status
           });
-        } catch (err) {
-          const errorLog = sanitizer.sanitize(LogLevel.ERROR, '[VC verification] failed to update member', {
-            error: err instanceof Error ? err.message : String(err),
-            memberId: member.getId(),
-            currentStatus: member.getStatus(),
-            extractedRank: result.extractedClaims.rank,
-            extractedDid: result.extractedClaims.did
-          });
-          if (errorLog.shouldLog) {
-            console.error(errorLog.message, errorLog.data);
-          }
+        } else {
+          console.error('[VC verification] Member not found for OIDC subject:', user.oidcSubjectId);
         }
-      } else {
-        const notFoundLog = sanitizer.sanitize(LogLevel.WARN, '[VC verification] member not found for rank update', {
-          oidcSubjectId: user.oidcSubjectId
-        });
-        if (notFoundLog.shouldLog) {
-          console.warn(notFoundLog.message, notFoundLog.data);
-        }
+      } catch (error) {
+        console.error('[VC verification] Failed to update member status:', error);
+        // Don't return error to avoid breaking the flow, just log it
       }
 
       // Update session
       await sessionStore.updateSession(transactionId, {
         status: 'completed',
         verifiableCredential: result.verifiableCredential,
-        extractedDid: result.extractedClaims.did,
+        extractedEmail: result.extractedClaims.email,
+        extractedName: result.extractedClaims.name,
         extractedRank: result.extractedClaims.rank,
         completedAt: Date.now()
       });

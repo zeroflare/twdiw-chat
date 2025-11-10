@@ -36,7 +36,12 @@ export function authMiddleware() {
 async function handleMockAuth(c: Context, next: Next) {
   try {
     // Check for mock user ID in header only
-    const mockUserId = c.req.header('X-Mock-User-Id') || 'user-2'; // Default to LIFE_WINNER_S user
+    const mockUserId = c.req.header('X-Mock-User-Id'); // Default to LIFE_WINNER_S user
+    
+    if (!mockUserId) {
+      console.log('[MockAuth] No mock user ID provided, authentication required');
+      return c.json({ error: 'Mock user ID required in development mode' }, 401);
+    }
     console.log('[MockAuth] Mock user ID:', mockUserId);
     
     const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
@@ -133,6 +138,11 @@ export function optionalAuthMiddleware() {
       if (isDev && useMockAuth) {
         // Development mode: use mock authentication
         const mockUserId = c.req.header('X-Mock-User-Id');
+    
+    if (!mockUserId) {
+      console.log('[MockAuth] No mock user ID provided, authentication required');
+      return c.json({ error: 'Mock user ID required in development mode' }, 401);
+    }
         if (mockUserId) {
           const mockAuthService = new MockAuthService(c.env.JWT_SECRET);
           const mockUser = mockAuthService.getMockUser(mockUserId);

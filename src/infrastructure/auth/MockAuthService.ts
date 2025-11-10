@@ -27,6 +27,12 @@ export class MockAuthService {
       status: 'GENERAL'
     },
     {
+      id: 'vc-test-user-csw30454',
+      oidcSubjectId: 'csw30454@gmail.com',
+      nickname: '吳勝繙 (VC測試)',
+      status: 'GENERAL'
+    },
+    {
       id: 'user-1',
       oidcSubjectId: 'mock-oidc-1',
       nickname: '測試用戶 (一般)',

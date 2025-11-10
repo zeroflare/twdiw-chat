@@ -1,73 +1,35 @@
-/**
- * Main entry point for twdiw-chat Cloudflare Worker
- * Integrates all API routes and handles scheduled events
- */
-
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 
-// Import API routes
 import authRoutes from './api/auth';
+import vcRoutes from './api/vc-verification';
 import forumsRoutes from './api/forums';
-import vcVerificationRoutes from './api/vc-verification';
 import chatRoutes from './api/chat';
-import adminRoutes from './api/admin';
 import devRoutes from './api/dev';
+import debugRoutes from './api/debug';
+import * as sessionCleanup from './scheduled/session-cleanup';
 
-// Import scheduled worker
-import sessionCleanup from './scheduled/session-cleanup';
+const app = new Hono<{ Bindings: CloudflareBindings }>();
 
-// Create main app
-const app = new Hono();
+import adminRoutes from './api/admin';
 
-// CORS middleware
-app.use('*', cors({
-  origin: [
-    'http://localhost:3000',
-    'https://twdiw-chat.pages.dev',
-    'https://twdiw-chat-new.pages.dev',
-    /^https:\/\/.*\.twdiw-chat\.pages\.dev$/,
-    /^https:\/\/.*\.twdiw-chat-new\.pages\.dev$/
-  ],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Mock-User-Id'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-}));
+// API Routes
+app.route('/api/auth', authRoutes);
+app.route('/api/vc', vcRoutes);
+app.route('/api/forums', forumsRoutes);
+app.route('/api/chat', chatRoutes);
+app.route('/api/dev', devRoutes);
+app.route('/api/debug', debugRoutes);
+app.route('/api/admin', adminRoutes);
 
-// API health check endpoint (moved to /api to avoid conflict with frontend)
-app.get('/api', (c) => {
-  const isDev = c.env.DEV_MODE === 'true' || c.env.NODE_ENV === 'development';
-  
-  return c.json({
-    message: '三人行必有我師論壇 API',
-    version: '1.0.0',
-    mode: isDev ? 'development' : 'production',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      auth: '/api/auth/*',
-      forums: '/api/forums/*',
-      vcVerification: '/api/vc/verify/*',
-      chat: '/api/chat/*',
-      admin: '/api/admin/*',
-      ...(isDev && { dev: '/api/dev/*' })
-    }
-  });
+// Health check
+app.get('/health', (c) => {
+  return c.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Mount API routes
-app.route('/api/auth', authRoutes);
-app.route('/api/forums', forumsRoutes);
-app.route('/api/vc/verify', vcVerificationRoutes);
-app.route('/api/chat', chatRoutes);
-app.route('/api/admin', adminRoutes);
-app.route('/api/dev', devRoutes);
-
-// Catch-all route - return 404 for any non-API routes
-// Frontend is served separately via Cloudflare Pages
+// Serve static assets using the ASSETS binding
+// The Assets binding automatically handles SPA routing (404 -> index.html)
 app.get('*', (c) => {
-  return c.json({
-    error: 'Not Found',
-    message: 'This is the API backend. Frontend is served separately via Cloudflare Pages.'
-  }, 404);
+  return c.env.ASSETS.fetch(c.req.raw);
 });
 
 // 404 handler
@@ -86,5 +48,5 @@ export default {
   async fetch(request: Request, env: any, ctx: any) {
     return app.fetch(request, env, ctx);
   },
-  scheduled: sessionCleanup.scheduled,
+  scheduled: sessionCleanup.default.scheduled,
 };
