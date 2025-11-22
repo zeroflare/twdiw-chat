@@ -26,7 +26,7 @@ importers:
         version: 5.4.5
       vitest:
         specifier: ^4.0.13
-        version: 4.0.13
+        version: 4.0.13(@types/node@22.16.0)
       wrangler:
         specifier: ^4.46.0
         version: 4.46.0
@@ -35,9 +35,15 @@ packages:
 
   '@cloudflare/workers-types@4.20240512.0':
     resolution: {integrity: sha512-arqrn4Q5OK3VRdq/+RYwdW6ZZsoso4UZs+rHWS4zv2VT3xBNNQj7tjxZ8B5coxTMQQMU1xDbuxQZ8KGCblcQVA==}
+    dev: true
+
+  '@types/node@22.16.0':
+    resolution: {integrity: sha512-VoM2KbLx6L2FtqHGGx6QAahqjqL2QMwxmVjqHaXi2lUjXnp+QgU9kJzh8w5FQe8z9ZfBMtQzaXhMPqXU9R7Krg==}
+    dev: true
 
   '@types/uuid@10.0.0':
     resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
+    dev: true
 
   hono@4.10.4:
     resolution: {integrity: sha512-j5bBEKjkULnq7LLSHJkRVjfuOLhIFiQce8+ZtOzCzZeUPUBlxdV1nhkr+MHH9+LUfzQqmGgg8RvAkOmOCYF8Kg==}
@@ -47,6 +53,11 @@ packages:
     resolution: {integrity: sha512-vcI4UpRgg81oIRUFwR0WSIHKt11nJ7SAVlYNIu+QpqeyXP+gpQJy/Z4+F0aGxSE4MqwjyXvW/TzgkLAx2AGHwQ==}
     engines: {node: '>=14.17'}
     hasBin: true
+    dev: true
+
+  undici-types@6.20.0:
+    resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5OAYvEna3au31fJRXiav1Tuv01JkNbXKkWHYU/9rhpAag==}
+    dev: true
 
   uuid@13.0.0:
     resolution: {integrity: sha512-7+2ABuh7bb58zP3nrBr6RBnhOTneLCqvMhvS0TF2zqjGkE0+ds+rEwVs7cHxBhLSf0TLfEKAnhufoU7uMKUqng==}
@@ -56,8 +67,32 @@ packages:
     resolution: {integrity: sha512-cIjXcSsoqBqMx3DGPHi+j4jV1A1XM0XK+eWl/bTdgOPyGJv7QKKGzdWj79cIMXLo9RoM6OyqjCLbFYWw9Dg2rg==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
+    peerDependencies:
+      '@edge-runtime/vm': '*'
+      '@types/node': ^18.0.0 || >=20.0.0
+      '@vitest/browser': 4.0.13
+      '@vitest/ui': 4.0.13
+      happy-dom: '*'
+      jsdom: '*'
+    peerDependenciesMeta:
+      '@edge-runtime/vm':
+        optional: true
+      '@types/node':
+        optional: true
+      '@vitest/browser':
+        optional: true
+      '@vitest/ui':
+        optional: true
+      happy-dom:
+        optional: true
+      jsdom:
+        optional: true
+    dependencies:
+      '@types/node': 22.16.0
+    dev: true
 
   wrangler@4.46.0:
     resolution: {integrity: sha512-8p9aMlynZZLe8HdU9kF1AiGjNkZc+3bkw/pHl/K2B8KiCOUGSYIb/bHg/oFGXjmGGQ1rMQn1FhYQFvGTKAEQIg==}
     engines: {node: '>=18.14.1'}
     hasBin: true
+    dev: true
