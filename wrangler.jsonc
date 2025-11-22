@@ -6,7 +6,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "twdiw-chat",
 	"main": "src/index.ts",
-	"account_id": "b9ddfa17dcee5a813831cac6e70b197e",
+	"account_id": "9d8ae99f025c034f3488d9a1f3c60505",
 	"compatibility_date": "2024-11-01",
 	"compatibility_flags": ["nodejs_compat"],
 
@@ -24,7 +24,7 @@
 	"kv_namespaces": [
 		{
 			"binding": "twdiw_chat_session",
-			"id": "3e4a0d9792ed4591b1fe3091e3c088d8"
+			"id": "969036713b854cb9bebb4385ff2e4a52"
 		}
 	],
 	
@@ -32,7 +32,7 @@
 		{
 			"binding": "twdiw_chat_db",
 			"database_name": "twdiw-chat-db",
-			"database_id": "44ca7c98-e569-4ae9-b90e-e86c5e87fc0a",
+			"database_id": "9092ae61-6194-449b-93ea-1a5b0b0d80e5",
 			"migrations_dir": "migrations"
 		}
 	],
