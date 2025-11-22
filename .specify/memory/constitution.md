@@ -1,4 +1,5 @@
-# Constitution for `twdiw-chat`                                                 
+# Constitution for `twdiw-chat`
+# Last Reviewed: 2025-11-22
                                                                                 
 This document outlines the core principles, architectural decisions, and quality
  standards for the `twdiw-chat` project. All development must adhere to these gu

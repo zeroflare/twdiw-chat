@@ -33,8 +33,8 @@ export class OIDCService {
   private config: OIDCConfig;
   private jwtService: JWTService;
 
-  constructor(env: any) {
-    this.config = new OIDCConfig(env);
+  constructor(env: any, baseUrl?: string) {
+    this.config = new OIDCConfig(env, baseUrl);
     this.jwtService = new JWTService(env.JWT_SECRET);
   }
 

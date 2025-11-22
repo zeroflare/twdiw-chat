@@ -47,7 +47,9 @@ app.get('/login', async (c) => {
       return c.json({ error: 'Rate limit exceeded' }, 429);
     }
 
-    const oidcService = new OIDCService(c.env);
+    // Get base URL from request
+    const baseUrl = new URL(c.req.url).origin;
+    const oidcService = new OIDCService(c.env, baseUrl);
     const authRequest = await oidcService.createAuthorizationRequest();
 
     // Store OIDC state and code verifier in KV for callback verification
@@ -162,7 +164,9 @@ app.get('/callback', async (c) => {
       await c.env.twdiw_chat_session.delete(`url_state:${state}`);
     }
 
-    const oidcService = new OIDCService(c.env);
+    // Get base URL from request
+    const baseUrl = new URL(c.req.url).origin;
+    const oidcService = new OIDCService(c.env, baseUrl);
     
     // Exchange code for tokens
     console.log('Exchanging code for tokens...');

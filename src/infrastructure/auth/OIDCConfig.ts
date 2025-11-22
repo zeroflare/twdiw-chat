@@ -20,12 +20,15 @@ export interface PKCEChallenge {
 export class OIDCConfig {
   private config: OIDCConfiguration;
 
-  constructor(env: any) {
+  constructor(env: any, baseUrl?: string) {
+    // If baseUrl is provided, use it; otherwise try env.BASE_URL or construct from request
+    const redirectBaseUrl = baseUrl || env.BASE_URL || 'https://twdiw-chat.winter-firefly-a3b0.workers.dev';
+    
     this.config = {
       issuerUrl: env.OIDC_ISSUER_URL || 'https://verifier-sandbox.wallet.gov.tw',
       clientId: env.OIDC_CLIENT_ID,
       clientSecret: env.OIDC_CLIENT_SECRET,
-      redirectUri: env.OIDC_REDIRECT_URI || `${env.BASE_URL}/auth/callback`,
+      redirectUri: env.OIDC_REDIRECT_URI || `${redirectBaseUrl}/api/auth/callback`,
       scopes: ['openid', 'profile']
     };
 
