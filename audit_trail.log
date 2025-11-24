@@ -160,3 +160,14 @@
 - [x] Fix pnpm-lock.yaml synchronization with package.json
 - [x] Configure required environment secrets for Worker
 - [x] Fix OIDC redirect URI configuration mismatch
+
+=== Session 2025-11-24T11:07:14 ===
+## 雲端部署認證障礙修復
+**問題**: OIDC callback 失敗導致 `?auth=error&type=auth_failed`
+**根因**: Redirect URI 配置不匹配 (本地 vs 雲端域名)
+**解決**: 
+- 確認 OIDC 服務正常運行
+- 配置雲端 redirect URI: `https://twdiw-chat.zeroflare.tw/api/auth/callback`
+- 恢復生產模式配置
+- 清空測試資料庫
+**狀態**: ✅ 已修復，測試環境就緒

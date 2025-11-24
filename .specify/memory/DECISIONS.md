@@ -1,4 +1,24 @@
-## Checkpoint 2025-11-22: SSCI-Lite Closing Steps
+## Checkpoint 2025-11-24: 雲端部署認證障礙修復
+**Status**: COMPLETED
+**Summary**: 修復雲端部署 OIDC 認證失敗問題，確保 redirect URI 配置正確。
+**Key Changes**:
+- 診斷 OIDC callback 處理失敗根因
+- 確認 OIDC 服務正常運行
+- 配置正確的雲端 redirect URI
+- 恢復生產模式配置
+- 清空測試資料庫
+
+**Files Modified**:
+- `wrangler.jsonc`: 恢復生產配置
+- D1 資料庫: 清空測試數據
+
+**Acceptance Criteria**: ✅ PASS
+- OIDC 認證流程正常工作
+- 雲端部署可正常訪問
+- 測試環境已準備就緒
+
+**Rollback Plan**: 恢復開發模式配置，重新設置測試數據
+
 **Summary**: Executed the standardized SSCI-Lite closing procedure to update documentation and agent context files.
 
 **Details**:

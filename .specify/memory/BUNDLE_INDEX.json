@@ -1,23 +1,23 @@
 {
-  "last_session_id": "2025-11-09T11:30:00_taiwan_wallet_verifier",
-  "last_user_hash": "tw_wallet_verifier",
-  "last_design_id": "vc_integration@v1",
-  "last_lifecycle_epoch": "2025-11-09T11:30:00",
+  "last_session_id": "2025-11-24T11:07:14_cloud_auth_fix",
+  "last_user_hash": "cloud_deployment_fix",
+  "last_design_id": "oidc_redirect_uri@v1",
+  "last_lifecycle_epoch": "2025-11-24T11:07:14",
   "files_digest": {
-    "src/infrastructure/services/TaiwanWalletVerifierService.ts": {
-      "status": "created",
-      "changes": "Taiwan government wallet verifier API adapter service",
-      "lines_added": 315,
-      "security_impact": "secure API communication, no security regression"
+    "wrangler.jsonc": {
+      "status": "modified",
+      "changes": "恢復生產模式配置，移除 DEV_MODE 和 MOCK_AUTH",
+      "lines_modified": 2,
+      "security_impact": "恢復正常認證流程"
     },
-    "progress.md": {
+    "audit_trail.log": {
       "status": "updated",
-      "changes": "Taiwan Wallet Verifier Service implementation documentation",
-      "lines_added": 65,
+      "changes": "記錄雲端部署認證障礙修復過程",
+      "lines_added": 8,
       "security_impact": "audit trail"
     }
   },
-  "session_summary": "Created TaiwanWalletVerifierService adapter for Taiwan government wallet verifier API",
+  "session_summary": "修復雲端部署 OIDC 認證失敗，配置正確 redirect URI",
   "acceptance_status": "PASS",
   "rollback_available": true
 }
